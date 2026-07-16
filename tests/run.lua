@@ -5,7 +5,7 @@ local stub = dofile(ROOT .. "/tests/wow_stub.lua")
 local ADDON, ns = "SettingsHub", {}
 local FILES = {
 	"Core/Bootstrap.lua", "Core/Enum.lua", "Core/CombatQueue.lua", "Core/Blame.lua",
-	"Adapters/Cvar.lua", "Core/Engine.lua", "Core/Replay.lua",
+	"Adapters/Cvar.lua", "Core/Engine.lua", "Core/Replay.lua", "Core/Actions.lua",
 	"Data/Curated_A_Camera.lua", "Data/Curated_B_SoftTarget.lua", "Data/Curated_C_Nameplate.lua",
 	"Data/Curated_D_CombatText.lua", "Data/Curated_E_QoL.lua", "Data/Curated_F_Graphics.lua",
 	"Data/Curated_G_Sound.lua", "Data/Curated_H_Dev.lua", "Data/Exposed.lua",
@@ -14,7 +14,8 @@ local FILES = {
 }
 -- 纯 UI 文件无法在桩里执行,只做编译级语法检查
 local SYNTAX_ONLY = {
-	"UI/MainFrame.lua", "UI/Browser.lua", "UI/LogPage.lua", "Integration/OfficialSettings.lua",
+	"UI/MainFrame.lua", "UI/Browser.lua", "UI/Widgets.lua", "UI/ThemePage.lua",
+	"UI/LogPage.lua", "Integration/OfficialSettings.lua",
 }
 for _, f in ipairs(FILES) do
 	local chunk = assert(loadfile(ROOT .. "/" .. f))
@@ -49,9 +50,39 @@ stub.fire("ADDON_LOADED", ADDON)
 stub.fire("PLAYER_LOGIN")
 E = ns.Engine
 t("启动:db 初始化", ns.db ~= nil and ns.db.global.undoLog.head == 1)
-local themeControls = 0
-for _, th in ipairs(ns.Data.themes) do themeControls = themeControls + #th.controls end
-t("数据种子:八主题已加载", #ns.Data.themes == 8 and themeControls > 0, themeControls)
+-- 策展数据完整性:字段齐全、id/key 唯一、officialSearch 全为 bool 且数量达标
+do
+	local total, officialBools, badField, dupe = 0, 0, nil, nil
+	local seenIds, seenKeys = {}, {}
+	local function walk(controls)
+		for _, c in ipairs(controls) do
+			total = total + 1
+			if not c.id or not c.type or not (c.text and c.text.zh and c.text.zh ~= "") then
+				badField = c.id or c.key or "?"
+			end
+			if c.domain and not c.key then badField = c.id end
+			if c.type == "enum" and not c.values then badField = c.id end
+			if c.type == "action" and not c.run then badField = c.id end
+			if seenIds[c.id] then dupe = c.id end
+			seenIds[c.id] = true
+			if c.domain == "cvar" then
+				if seenKeys[c.key] then dupe = c.key end
+				seenKeys[c.key] = true
+			end
+			if c.officialSearch then
+				officialBools = officialBools + 1
+				if c.type ~= "bool" then badField = c.id .. ":officialSearch非bool" end
+			end
+			if c.children then walk(c.children) end
+		end
+	end
+	for _, th in ipairs(ns.Data.themes) do walk(th.controls) end
+	t("策展数据:八主题", #ns.Data.themes == 8)
+	t("策展数据:字段完整", badField == nil, badField)
+	t("策展数据:id/key 唯一", dupe == nil, dupe)
+	t("策展数据:officialSearch bool >= 20", officialBools >= 20, officialBools)
+	t("策展数据:总条数 >= 85", total >= 85, total)
+end
 t("枚举:计数正确且过滤掉 Command", ns.Enum.count == CVAR_TOTAL, ns.Enum.count)
 t("枚举:Command 不在缓存", ns.Enum.cache["reloadui"] == nil)
 t("枚举:secure 位正确", ns.Enum.cache["nameplateMaxDistance"].secure == true)
