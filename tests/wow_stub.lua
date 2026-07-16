@@ -204,13 +204,46 @@ _G.C_TTSSettings = {
 	SetSetting = function(e, v) stub.tts.bools[e] = v end,
 }
 
-local fakeAceDB = {}
-function fakeAceDB:New(_, defaults)
-	return deepcopy(defaults)
+-- 四轴上下文
+stub.state.instanceType = "none"
+_G.IsInInstance = function()
+	local t = stub.state.instanceType
+	return t ~= "none", t
 end
-_G.LibStub = setmetatable({}, { __call = function(_, major)
-	if major == "AceDB-3.0" then return fakeAceDB end
-	error("stub: no lib " .. tostring(major))
-end })
+_G.GetNumSpecializations = function() return 2 end
+_G.GetSpecialization = function() return stub.state.spec or 1 end
+_G.GetSpecializationInfo = function(i) return 250 + i, "Spec" .. i end
+_G.GetPhysicalScreenSize = function() return 2560, 1440 end
+
+-- 真库:LibStub/LibSerialize/LibDeflate 直接用仓库里的实现(导入导出走真管线)
+assert(ROOT, "stub 需要全局 ROOT 指向仓库根")
+dofile(ROOT .. "/Libs/LibStub/LibStub.lua")
+dofile(ROOT .. "/Libs/LibSerialize/LibSerialize.lua")
+dofile(ROOT .. "/Libs/LibDeflate/LibDeflate.lua")
+
+-- AceDB 桩:支持命名 profile 与 SetProfile(真 AceDB 依赖过多环境 API,桩到够用为止)
+local AceDB = LibStub:NewLibrary("AceDB-3.0", 999)
+function AceDB:New(_, defaults)
+	local profiles = {}
+	local db = { global = deepcopy(defaults.global), char = deepcopy(defaults.char or {}) }
+	local current
+	local function ensure(name)
+		if not profiles[name] then profiles[name] = deepcopy(defaults.profile) end
+		return profiles[name]
+	end
+	function db:SetProfile(name)
+		current = name
+		self.profile = ensure(name)
+	end
+	function db:GetCurrentProfile() return current end
+	function db:GetProfiles()
+		local out = {}
+		for k in pairs(profiles) do out[#out + 1] = k end
+		table.sort(out)
+		return out, #out
+	end
+	db:SetProfile("Default")
+	return db
+end
 
 return stub

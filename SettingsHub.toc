@@ -31,6 +31,7 @@ Adapters\ConsoleExec.lua
 Core\Engine.lua
 Core\Replay.lua
 Core\Actions.lua
+Core\Profiles.lua
 
 Data\Curated_A_Camera.lua
 Data\Curated_B_SoftTarget.lua
@@ -47,6 +48,7 @@ UI\MainFrame.lua
 UI\Browser.lua
 UI\Widgets.lua
 UI\ThemePage.lua
+UI\ProfilePage.lua
 UI\LogPage.lua
 Integration\OfficialSettings.lua
 

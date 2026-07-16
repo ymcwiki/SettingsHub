@@ -7,7 +7,7 @@ local FILES = {
 	"Core/Bootstrap.lua", "Core/Enum.lua", "Core/CombatQueue.lua", "Core/Blame.lua",
 	"Adapters/Cvar.lua", "Adapters/Binding.lua", "Adapters/Macro.lua", "Adapters/EditMode.lua",
 	"Adapters/ClickBinding.lua", "Adapters/MuteSound.lua", "Adapters/TTS.lua", "Adapters/ConsoleExec.lua",
-	"Core/Engine.lua", "Core/Replay.lua", "Core/Actions.lua",
+	"Core/Engine.lua", "Core/Replay.lua", "Core/Actions.lua", "Core/Profiles.lua",
 	"Data/Curated_A_Camera.lua", "Data/Curated_B_SoftTarget.lua", "Data/Curated_C_Nameplate.lua",
 	"Data/Curated_D_CombatText.lua", "Data/Curated_E_QoL.lua", "Data/Curated_F_Graphics.lua",
 	"Data/Curated_G_Sound.lua", "Data/Curated_H_Dev.lua", "Data/Exposed.lua",
@@ -17,7 +17,7 @@ local FILES = {
 -- 纯 UI 文件无法在桩里执行,只做编译级语法检查
 local SYNTAX_ONLY = {
 	"UI/MainFrame.lua", "UI/Browser.lua", "UI/Widgets.lua", "UI/ThemePage.lua",
-	"UI/LogPage.lua", "Integration/OfficialSettings.lua",
+	"UI/ProfilePage.lua", "UI/LogPage.lua", "Integration/OfficialSettings.lua",
 }
 for _, f in ipairs(FILES) do
 	local chunk = assert(loadfile(ROOT .. "/" .. f))
@@ -243,6 +243,71 @@ local okB = ns.Adapters.binding:Restore(bsnap)
 local okM = ns.Adapters.macro:Restore(mcsnap)
 t("战斗锁:binding/macro Restore 拒绝", okB == false and okM == false)
 stub.state.inCombat = false
+
+-- P6 profile:导出导入(真 LibSerialize/LibDeflate 管线)
+E:Set("cvar", "dummyCvar9", "1", "user")
+ns.Profiles:CaptureDomain("tts")
+local exported = ns.Profiles:Export()
+t("profile:导出串带魔法头", exported:sub(1, 5) == "!SH1!")
+local payload, perr = ns.Profiles:Decode(exported)
+t("profile:解码回环", payload ~= nil and payload.data.cvar.dummyCvar9 == "1"
+	and payload.data.tts ~= nil, perr)
+t("profile:坏串有错误信息", (select(2, ns.Profiles:Decode("garbage"))) ~= nil)
+E:Set("cvar", "dummyCvar9", "0", "test")
+stub.tts.rate = 9
+local changes, bulkList = ns.Profiles:DiffAgainstCurrent(payload)
+t("profile:diff 检出改动与整域", #changes >= 1 and #bulkList >= 1)
+ns.Profiles:ApplyImport(payload)
+t("profile:导入应用一致", C_CVar.GetCVar("dummyCvar9") == "1" and stub.tts.rate == 0)
+E:Set("cvar", "dummyCvar9", "0", "test")
+ns.db.profile.cvar.dummyCvar9 = nil
+ns.db.profile.domains.tts = nil
+
+-- P6 四轴:场景轴切换与回落
+ns.db.global.autoSwitch.scene.enabled = true
+ns.db.global.autoSwitch.scene.map.raid = "RaidProfile"
+ns.db.global.autoSwitch.onLeave = "restore"
+ns.Profiles:Switch("RaidProfile", "预置")
+E:Set("cvar", "dummyCvar11", "1", "user")
+ns.Profiles:Switch("Default", "回基准")
+t("profile:手动切换更新角色基准", ns.db.char.baseProfile == "Default")
+E:Set("cvar", "dummyCvar11", "0", "test")
+stub.state.instanceType = "raid"
+stub.fire("PLAYER_ENTERING_WORLD")
+t("四轴:进团本自动切换", ns.Profiles:Current() == "RaidProfile")
+t("四轴:目标 profile 期望态已应用", C_CVar.GetCVar("dummyCvar11") == "1")
+stub.state.instanceType = "none"
+stub.fire("PLAYER_ENTERING_WORLD")
+t("四轴:离开场景自动回落基准", ns.Profiles:Current() == "Default")
+
+-- P6 四轴:专精轴 + 关轴回落
+ns.db.global.autoSwitch.spec.enabled = true
+ns.db.global.autoSwitch.spec.map[251] = "RaidProfile"
+stub.state.spec = 1
+stub.fire("PLAYER_SPECIALIZATION_CHANGED", "player")
+t("四轴:专精轴切换", ns.Profiles:Current() == "RaidProfile")
+ns.db.global.autoSwitch.spec.enabled = false
+stub.fire("PLAYER_SPECIALIZATION_CHANGED", "player")
+t("四轴:关轴后回落", ns.Profiles:Current() == "Default")
+ns.db.global.autoSwitch.scene.enabled = false
+
+-- P6 整域快照撤销
+local bulkEntry
+do
+	local log = ns.db.global.undoLog
+	for i = 0, 499 do
+		local p = ((log.head - 2 - i) % 500) + 1
+		local e = log.entries[p]
+		if not e then break end
+		if e.bulk and e.domain == "cvar" and not e.undone then bulkEntry = e break end
+	end
+end
+t("四轴:切换留下整域快照", bulkEntry ~= nil and bulkEntry.old.dummyCvar11 == "1")
+E:Set("cvar", "dummyCvar11", "0", "test")
+r = E:Undo(bulkEntry)
+t("四轴:整域快照可撤销", r == "applied" and C_CVar.GetCVar("dummyCvar11") == "1")
+ns.db.profile.cvar.dummyCvar11 = nil
+E:Set("cvar", "dummyCvar11", "0", "test")
 
 -- 语法检查:UI 文件能编译
 for _, f in ipairs(SYNTAX_ONLY) do

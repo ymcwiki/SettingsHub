@@ -75,7 +75,11 @@ local function updateRow(row, e)
 	row.time:SetText(date("%m-%d %H:%M:%S", e.t))
 	row.source:SetText(SOURCE_NAMES[e.source] or e.source)
 	row.key:SetText(e.key)
-	row.change:SetFormattedText("%s 改为 %s", tostring(e.old), tostring(e.new))
+	if e.bulk then
+		row.change:SetFormattedText("[整域快照] %s", tostring(e.new))
+	else
+		row.change:SetFormattedText("%s 改为 %s", tostring(e.old), tostring(e.new))
+	end
 	if e.failed then
 		row.change:SetTextColor(1, 0.3, 0.3)
 	else

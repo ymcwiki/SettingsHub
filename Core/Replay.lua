@@ -5,7 +5,14 @@ ns.Replay = M
 
 -- 只重放有漂移的项:machine 项存 Config.wtf 通常无漂移,自然跳过;
 -- 服务器存储项若被后到同步覆盖(AIO #126 场景),在这里按期望态改回
-local function applyDesired(source)
+local applyDesired
+
+-- Profiles 切换后按新 profile 的期望态回灌 cvar 域
+function M:ApplyDesired(source)
+	return applyDesired(source)
+end
+
+function applyDesired(source)
 	local n = 0
 	for key, want in pairs(ns.db.profile.cvar) do
 		local info = ns.Enum:Get(key)

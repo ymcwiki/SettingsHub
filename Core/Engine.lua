@@ -85,8 +85,26 @@ function M:LastEntry()
 	return log.entries[p]
 end
 
+-- 整域快照条目:profile 切换/批量导入前记录,撤销时整域 Restore
+function M:LogBulk(domain, snapshot, label)
+	if snapshot == nil then return end
+	local entry = {
+		t = time(), domain = domain, key = "*" .. domain .. "*",
+		old = snapshot, new = label, source = "profile", bulk = true,
+	}
+	pushEntry(entry)
+	return entry
+end
+
 function M:Undo(entry)
 	if entry.failed or entry.undone then return "failed", "not-undoable" end
+	if entry.bulk then
+		local ok = ns.Adapters[entry.domain]:Restore(entry.old)
+		if ok == false then return "failed", "restore-failed" end
+		entry.undone = true
+		self:Notify(entry.domain, entry.key)
+		return "applied"
+	end
 	if entry.old == nil then return "failed", "no-old-value" end
 	local r, err = self:Set(entry.domain, entry.key, entry.old, "undo")
 	if r == "applied" then
