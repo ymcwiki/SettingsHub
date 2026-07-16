@@ -26,6 +26,70 @@ local function buildThemePage(theme)
 				end
 			end
 		end
+		-- G 主题页尾部追加静音音效列表管理(MuteSoundFile 域)
+		if theme.key == "G" then
+			local header = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+			header:SetPoint("TOPLEFT", 4, y - 10)
+			header:SetText("静音音效列表(MuteSoundFile,登录自动重放)")
+			local input = CreateFrame("EditBox", nil, content, "InputBoxTemplate")
+			input:SetSize(120, 20)
+			input:SetPoint("TOPLEFT", 8, y - 34)
+			input:SetAutoFocus(false)
+			input:SetNumeric(true)
+			local addBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+			addBtn:SetSize(60, 22)
+			addBtn:SetPoint("LEFT", input, "RIGHT", 8, 0)
+			addBtn:SetText("添加")
+			addBtn:SetScript("OnClick", function()
+				local id = input:GetNumber()
+				if id and id > 0 then
+					ns.Engine:Set("mutesound", tostring(id), "1", "user")
+					input:SetText("")
+					page:OnPageShow()
+				end
+			end)
+			local hint = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+			hint:SetPoint("LEFT", addBtn, "RIGHT", 8, 0)
+			hint:SetText("输入 soundKitFile 的 fileID(wago.tools 可查)")
+			y = y - 62
+			page.muteRows = {}
+			page.muteAnchorY = y
+			function page:RefreshMuteList()
+				for _, r in ipairs(self.muteRows) do r:Hide() end
+				local ry = self.muteAnchorY
+				for i, fileID in ipairs(ns.db.profile.mutesound) do
+					local r = self.muteRows[i]
+					if not r then
+						r = CreateFrame("Frame", nil, content)
+						r:SetSize(500, 22)
+						r.text = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+						r.text:SetPoint("LEFT", 12, 0)
+						r.temp = CreateFrame("Button", nil, r, "UIPanelButtonTemplate")
+						r.temp:SetSize(76, 18)
+						r.temp:SetPoint("LEFT", 160, 0)
+						r.temp:SetText("临时解除")
+						r.del = CreateFrame("Button", nil, r, "UIPanelButtonTemplate")
+						r.del:SetSize(50, 18)
+						r.del:SetPoint("LEFT", r.temp, "RIGHT", 6, 0)
+						r.del:SetText("移除")
+						self.muteRows[i] = r
+					end
+					r:SetPoint("TOPLEFT", 0, ry)
+					r.text:SetText(tostring(fileID))
+					r.temp:SetScript("OnClick", function()
+						ns.Adapters.mutesound:TempUnmute(fileID)
+						ns.Print(string.format("%d 本次会话解除静音,下次登录恢复", fileID))
+					end)
+					r.del:SetScript("OnClick", function()
+						ns.Engine:Set("mutesound", tostring(fileID), "0", "user")
+						page:OnPageShow()
+					end)
+					r:Show()
+					ry = ry - 24
+				end
+				content:SetHeight(-ry + 10)
+			end
+		end
 		content:SetHeight(-y + 10)
 
 		local footer = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -46,6 +110,7 @@ local function buildThemePage(theme)
 		function page:OnPageShow()
 			for _, w in ipairs(self.widgets) do w:Update() end
 			self.reloadBtn:SetShown(next(ns.Pending) ~= nil)
+			if self.RefreshMuteList then self:RefreshMuteList() end
 		end
 
 		ns.Engine:AddListener(function()

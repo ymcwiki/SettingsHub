@@ -13,6 +13,8 @@ local defaults = {
 	profile = {
 		domains = { cvar = true },
 		cvar = {},
+		consoleexec = {},
+		mutesound = {},
 	},
 }
 

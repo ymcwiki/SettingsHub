@@ -24,7 +24,13 @@ end
 function M:OnLogin()
 	local n = applyDesired("replay")
 	if n > 0 then
-		ns.Print(string.format("登录重放:补写 %d 项", n))
+		ns.Print(string.format("登录重放:补写 %d 项 CVar", n))
+	end
+	-- 无回读域按期望态全量重放(MuteSoundFile 仅会话级,console 命令多数不持久)
+	local ce = ns.Adapters.consoleexec:ReplayAll()
+	local ms = ns.Adapters.mutesound:ReplayAll()
+	if ce + ms > 0 then
+		ns.Print(string.format("登录重放:console 命令 %d 条,静音音效 %d 个", ce, ms))
 	end
 end
 

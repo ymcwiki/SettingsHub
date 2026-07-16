@@ -98,6 +98,112 @@ end
 _G.SlashCmdList = {}
 _G.GetBuildInfo = function() return "12.1.0", "58000", "Jan 1 2026", 120100 end
 
+-- P5 非 CVar 域桩
+stub.consoleLog = {}
+_G.ConsoleExec = function(cmd) stub.consoleLog[#stub.consoleLog + 1] = cmd end
+
+stub.muted = {}
+_G.MuteSoundFile = function(id) stub.muted[id] = true end
+_G.UnmuteSoundFile = function(id) stub.muted[id] = nil end
+
+stub.keyToCmd = { SPACE = "JUMP", TAB = "TARGETNEARESTENEMY" }
+stub.modifiedClicks = { SELFCAST = "ALT", FOCUSCAST = "NONE", AUTOLOOTTOGGLE = "SHIFT" }
+stub.saveBindingsCalls = 0
+local function bindingList()
+	local cmds, keysByCmd = {}, {}
+	for key, cmd in pairs(stub.keyToCmd) do
+		if not keysByCmd[cmd] then keysByCmd[cmd] = {} cmds[#cmds + 1] = cmd end
+		local ks = keysByCmd[cmd]
+		ks[#ks + 1] = key
+	end
+	table.sort(cmds)
+	for _, ks in pairs(keysByCmd) do table.sort(ks) end
+	return cmds, keysByCmd
+end
+_G.GetNumBindings = function() local c = bindingList() return #c end
+_G.GetBinding = function(i)
+	local c, m = bindingList()
+	local cmd = c[i]
+	return cmd, "STUB", m[cmd][1], m[cmd][2]
+end
+_G.GetBindingKey = function(cmd)
+	local _, m = bindingList()
+	return m[cmd] and m[cmd][1]
+end
+_G.SetBinding = function(key, cmd) stub.keyToCmd[key] = cmd return 1 end
+_G.SaveBindings = function() stub.saveBindingsCalls = stub.saveBindingsCalls + 1 end
+_G.GetCurrentBindingSet = function() return 2 end
+_G.GetModifiedClick = function(a) return stub.modifiedClicks[a] end
+_G.SetModifiedClick = function(a, v) stub.modifiedClicks[a] = v end
+
+local ACCOUNT_MAX = 120
+stub.accountMacros = { { name = "AccMacro", icon = "icon1", body = "/dance" } }
+stub.charMacros = { { name = "TestMacro", icon = "icon2", body = "/wave" } }
+local function macroAt(i)
+	if i <= ACCOUNT_MAX then return stub.accountMacros[i] end
+	return stub.charMacros[i - ACCOUNT_MAX]
+end
+_G.GetNumMacros = function() return #stub.accountMacros, #stub.charMacros end
+_G.GetMacroInfo = function(i)
+	local m = macroAt(i)
+	if m then return m.name, m.icon, m.body end
+end
+_G.GetMacroIndexByName = function(name)
+	for i, m in ipairs(stub.accountMacros) do if m.name == name then return i end end
+	for i, m in ipairs(stub.charMacros) do if m.name == name then return ACCOUNT_MAX + i end end
+	return 0
+end
+_G.CreateMacro = function(name, icon, body, perChar)
+	local list = perChar and stub.charMacros or stub.accountMacros
+	list[#list + 1] = { name = name, icon = icon, body = body }
+	return (perChar and ACCOUNT_MAX or 0) + #list
+end
+_G.EditMacro = function(i, name, icon, body)
+	local m = macroAt(i)
+	if m then m.name, m.icon, m.body = name, icon, body end
+end
+_G.DeleteMacro = function(i)
+	if i <= ACCOUNT_MAX then table.remove(stub.accountMacros, i)
+	else table.remove(stub.charMacros, i - ACCOUNT_MAX) end
+end
+
+_G.Enum.EditModeLayoutType = { Preset = 0, Account = 1, Character = 2 }
+stub.editMode = { activeLayout = 2, layouts = {
+	{ layoutType = 0, layoutName = "Modern" },
+	{ layoutType = 1, layoutName = "MyLayout", data = "blob1" },
+} }
+_G.C_EditMode = {
+	GetLayouts = function() return deepcopy(stub.editMode) end,
+	SaveLayouts = function(t) stub.editMode = deepcopy(t) end,
+	SetActiveLayout = function(i) stub.editMode.activeLayout = i end,
+	ConvertLayoutInfoToString = function(l) return "EMS:" .. (l.data or "") end,
+	ConvertStringToLayoutInfo = function(s)
+		local d = s:match("^EMS:(.*)$")
+		if d then return { data = d } end
+	end,
+}
+
+_G.Enum.ClickBindingType = { None = 0, Spell = 1, Macro = 2, Interaction = 3 }
+stub.clickProfile = {
+	{ type = 1, actionID = 133, button = "BUTTON1", modifiers = 0 },
+	{ type = 2, actionID = 121, button = "BUTTON2", modifiers = 1 },
+}
+_G.C_ClickBindings = {
+	GetProfileInfo = function() return deepcopy(stub.clickProfile) end,
+	SetProfileByInfo = function(t) stub.clickProfile = deepcopy(t) end,
+}
+
+_G.Enum.TtsBoolSetting = { AudibleFeedback = 0, NarrateMyMessages = 2 }
+stub.tts = { rate = 0, volume = 100, bools = { [0] = true, [2] = false } }
+_G.C_TTSSettings = {
+	GetSpeechRate = function() return stub.tts.rate end,
+	SetSpeechRate = function(v) stub.tts.rate = v end,
+	GetSpeechVolume = function() return stub.tts.volume end,
+	SetSpeechVolume = function(v) stub.tts.volume = v end,
+	GetSetting = function(e) return stub.tts.bools[e] end,
+	SetSetting = function(e, v) stub.tts.bools[e] = v end,
+}
+
 local fakeAceDB = {}
 function fakeAceDB:New(_, defaults)
 	return deepcopy(defaults)

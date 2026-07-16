@@ -4,9 +4,11 @@ local M = { failures = {}, _selfWriting = false, listeners = {} }
 ns.Engine = M
 
 local RING_SIZE = 500
--- 这些来源的成功写入会记入期望态(db.profile.cvar),登录重放据此工作;
+-- 这些来源的成功写入会记入期望态,登录重放据此工作;
 -- replay/test/undo/reset/uninstall 不记,undo 与 reset 对期望态有各自的显式语义
 local DESIRED_SOURCES = { user = true, import = true, ["profile"] = true }
+-- 有期望态语义的域及其在 profile 里的桶名(mutesound 的列表由适配器自维护,不走这里)
+local DESIRED_DOMAINS = { cvar = "cvar", consoleexec = "consoleexec" }
 
 local function ring()
 	return ns.db.global.undoLog
@@ -47,8 +49,9 @@ function M:Set(domain, key, value, source)
 	end
 
 	local entry = { t = time(), domain = domain, key = key, old = old, new = value, source = source }
-	if domain == "cvar" then
-		entry.prevDesired = ns.db.profile.cvar[key]
+	local bucket = DESIRED_DOMAINS[domain]
+	if bucket then
+		entry.prevDesired = ns.db.profile[bucket][key]
 	end
 	pushEntry(entry)
 
@@ -66,8 +69,8 @@ function M:Set(domain, key, value, source)
 		return "failed", err
 	end
 
-	if domain == "cvar" and DESIRED_SOURCES[source] then
-		ns.db.profile.cvar[key] = tostring(value)
+	if bucket and DESIRED_SOURCES[source] then
+		ns.db.profile[bucket][key] = tostring(value)
 	end
 	if domain == "cvar" and ns.Integration then
 		ns.Integration:NotifyOfficial(key)
@@ -88,9 +91,10 @@ function M:Undo(entry)
 	local r, err = self:Set(entry.domain, entry.key, entry.old, "undo")
 	if r == "applied" then
 		entry.undone = true
-		if entry.domain == "cvar" then
+		local bucket = DESIRED_DOMAINS[entry.domain]
+		if bucket then
 			-- 恢复该写入发生前的期望态(可能为 nil,即当时未被本插件管理)
-			ns.db.profile.cvar[entry.key] = entry.prevDesired
+			ns.db.profile[bucket][entry.key] = entry.prevDesired
 		end
 	end
 	return r, err

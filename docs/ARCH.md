@@ -19,8 +19,7 @@ SettingsHub/
 │   └── Profiles.lua       四轴切换器、导入导出
 ├── Adapters/
 │   ├── Cvar.lua  Binding.lua  Macro.lua  EditMode.lua
-│   ├── ClickBinding.lua  MuteSound.lua  TTS.lua  ConsoleExec.lua
-│   └── ReplayList.lua     无回读重放型的共享基类(MuteSound/ConsoleExec 继承)
+│   └── ClickBinding.lua  MuteSound.lua  TTS.lua  ConsoleExec.lua
 ├── Data/
 │   ├── Curated_A_Camera.lua ... Curated_H_Dev.lua   八大主题策展定义
 │   └── (由 scripts/census2lua.py 从 cvar-census 生成骨架,人工填文案)
@@ -120,7 +119,7 @@ SettingsHub/
 --   IsCombatSafe(key)    -> bool          战斗中能否立即写
 ```
 
-实现共八个文件。提示词包「七个适配器」的口径按类别数:MuteSound 与 ConsoleExec 同属无回读重放型,共享 ReplayList 基类,算一类两实现。
+实现共八个文件。提示词包「七个适配器」的口径按类别数:MuteSound 与 ConsoleExec 同属无回读重放型,算一类两实现(各自独立,均提供 ReplayAll 供登录重放;两者合计不足百行,抽基类属过度抽象,不做)。
 
 | 适配器 | 后端 API | 持久层 | 战斗限制 | 特殊点 |
 |---|---|---|---|---|
@@ -255,7 +254,7 @@ Serialize 聚合表加版本头 `{ v = 1, game = "12.1.0" }`,LibSerialize 序列
 
 ## 10. 决策记录
 
-1. **适配器 8 实现 7 分类**:MuteSound 与 ConsoleExec 共享 ReplayList 基类。提示词包计数口径以此为准。
+1. **适配器 8 实现 7 分类**:MuteSound 与 ConsoleExec 同为无回读重放型但实现独立(合计不足百行,不抽基类)。提示词包计数口径以此为准。
 2. **LibSerialize 进依赖**:P0 只列了 AceDB + LibDeflate,但导出串必须先序列化,自写不如引标准库,偏离已在此声明。
 3. **小地图钮不做**:AddonCompartment 满足图形入口,省两个库。
 4. **撤销环 + baseline 双层**:环管「最近撤销」,baseline 管「还原与卸载」,解决环淘汰后无法全量还原的问题。

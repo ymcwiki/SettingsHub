@@ -21,6 +21,13 @@ Core\Enum.lua
 Core\CombatQueue.lua
 Core\Blame.lua
 Adapters\Cvar.lua
+Adapters\Binding.lua
+Adapters\Macro.lua
+Adapters\EditMode.lua
+Adapters\ClickBinding.lua
+Adapters\MuteSound.lua
+Adapters\TTS.lua
+Adapters\ConsoleExec.lua
 Core\Engine.lua
 Core\Replay.lua
 Core\Actions.lua

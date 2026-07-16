@@ -5,7 +5,9 @@ local stub = dofile(ROOT .. "/tests/wow_stub.lua")
 local ADDON, ns = "SettingsHub", {}
 local FILES = {
 	"Core/Bootstrap.lua", "Core/Enum.lua", "Core/CombatQueue.lua", "Core/Blame.lua",
-	"Adapters/Cvar.lua", "Core/Engine.lua", "Core/Replay.lua", "Core/Actions.lua",
+	"Adapters/Cvar.lua", "Adapters/Binding.lua", "Adapters/Macro.lua", "Adapters/EditMode.lua",
+	"Adapters/ClickBinding.lua", "Adapters/MuteSound.lua", "Adapters/TTS.lua", "Adapters/ConsoleExec.lua",
+	"Core/Engine.lua", "Core/Replay.lua", "Core/Actions.lua",
 	"Data/Curated_A_Camera.lua", "Data/Curated_B_SoftTarget.lua", "Data/Curated_C_Nameplate.lua",
 	"Data/Curated_D_CombatText.lua", "Data/Curated_E_QoL.lua", "Data/Curated_F_Graphics.lua",
 	"Data/Curated_G_Sound.lua", "Data/Curated_H_Dev.lua", "Data/Exposed.lua",
@@ -176,6 +178,71 @@ t("blame:外部写入记录来源", ns.db.global.blame["cameraZoomSpeed"]
 stub.state.stackAddon = nil
 E:Set("cvar", "cameraZoomSpeed", "1", "test")
 t("blame:自写不覆盖", ns.db.global.blame["cameraZoomSpeed"].by == "EvilAddon")
+
+-- P5 非 CVar 域适配器
+r = E:Set("consoleexec", "actioncam", "full", "user")
+t("consoleexec:applied 且期望态记录", r == "applied" and ns.db.profile.consoleexec.actioncam == "full")
+t("consoleexec:命令已执行", stub.consoleLog[#stub.consoleLog] == "actioncam full")
+local ceLogs = #stub.consoleLog
+ns.Adapters.consoleexec:ReplayAll()
+t("consoleexec:登录重放执行", #stub.consoleLog == ceLogs + 1)
+
+E:Set("mutesound", "569593", "1", "user")
+t("mutesound:静音生效且入列表", stub.muted[569593] == true and #ns.db.profile.mutesound == 1)
+t("mutesound:Read 回读", ns.Adapters.mutesound:Read("569593") == "1")
+local msnap0 = ns.Adapters.mutesound:Serialize()
+E:Set("mutesound", "569593", "0", "user")
+t("mutesound:移除", stub.muted[569593] == nil and #ns.db.profile.mutesound == 0)
+ns.Adapters.mutesound:Restore(msnap0)
+t("mutesound:导入回环", stub.muted[569593] == true and #ns.db.profile.mutesound == 1)
+E:Set("mutesound", "569593", "0", "test")
+
+local bsnap = ns.Adapters.binding:Serialize()
+t("binding:导出含键位与 ModifiedClick", bsnap.bindings.JUMP and bsnap.bindings.JUMP[1] == "SPACE"
+	and bsnap.modified.SELFCAST == "ALT")
+stub.keyToCmd.SPACE = nil
+stub.modifiedClicks.SELFCAST = "NONE"
+local sbCalls = stub.saveBindingsCalls
+ns.Adapters.binding:Restore(bsnap)
+t("binding:导入回环且统一 SaveBindings", stub.keyToCmd.SPACE == "JUMP"
+	and stub.modifiedClicks.SELFCAST == "ALT" and stub.saveBindingsCalls == sbCalls + 1)
+
+local cbsnap = ns.Adapters.clickbinding:Serialize()
+t("clickbinding:宏条目按名导出", cbsnap[2].macroName == "TestMacro")
+
+local mcsnap = ns.Adapters.macro:Serialize()
+t("macro:导出账号+角色", #mcsnap.account == 1 and mcsnap.account[1].name == "AccMacro"
+	and #mcsnap.character == 1)
+DeleteMacro(121)
+CreateMacro("Filler", "icon", "/sit", true)
+ns.Adapters.macro:Restore(mcsnap)
+t("macro:按名重建且检测漂移", GetMacroIndexByName("TestMacro") == 122)
+
+ns.Adapters.clickbinding:Restore(cbsnap)
+t("clickbinding:导入按宏名重映射", stub.clickProfile[2].actionID == 122
+	and stub.clickProfile[1].actionID == 133)
+
+local esnap = ns.Adapters.editmode:Serialize()
+t("editmode:导出用户布局(跳过预设)", #esnap.layouts == 1 and esnap.layouts[1].name == "MyLayout"
+	and esnap.layouts[1].str == "EMS:blob1")
+stub.editMode.layouts[2].data = "corrupted"
+stub.editMode.activeLayout = 1
+ns.Adapters.editmode:Restore(esnap)
+t("editmode:导入回环含激活布局", stub.editMode.layouts[2].data == "blob1"
+	and stub.editMode.activeLayout == 2)
+
+local tsnap = ns.Adapters.tts:Serialize()
+stub.tts.rate = 5
+stub.tts.bools[0] = false
+ns.Adapters.tts:Restore(tsnap)
+t("tts:导入回环", stub.tts.rate == 0 and stub.tts.bools[0] == true)
+
+-- 战斗中批量域拒绝写入
+stub.state.inCombat = true
+local okB = ns.Adapters.binding:Restore(bsnap)
+local okM = ns.Adapters.macro:Restore(mcsnap)
+t("战斗锁:binding/macro Restore 拒绝", okB == false and okM == false)
+stub.state.inCombat = false
 
 -- 语法检查:UI 文件能编译
 for _, f in ipairs(SYNTAX_ONLY) do
