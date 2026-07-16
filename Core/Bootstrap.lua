@@ -22,6 +22,7 @@ ns.f:RegisterEvent("PLAYER_LOGIN")
 ns.f:RegisterEvent("PLAYER_ENTERING_WORLD")
 ns.f:RegisterEvent("CVAR_UPDATE")
 ns.f:RegisterEvent("PLAYER_REGEN_ENABLED")
+ns.f:RegisterEvent("PLAYER_REGEN_DISABLED")
 
 ns.f:SetScript("OnEvent", function(_, event, ...)
 	if event == "ADDON_LOADED" then
@@ -31,6 +32,7 @@ ns.f:SetScript("OnEvent", function(_, event, ...)
 		ns.Enum:Refresh()
 		ns.Blame:Init()
 		ns.Replay:OnLogin()
+		if ns.Integration then ns.Integration:Register() end
 	elseif event == "PLAYER_ENTERING_WORLD" then
 		ns.Replay:Assert()
 	elseif event == "CVAR_UPDATE" then
@@ -38,6 +40,9 @@ ns.f:SetScript("OnEvent", function(_, event, ...)
 		ns.Enum:OnExternalUpdate(cvar, value)
 	elseif event == "PLAYER_REGEN_ENABLED" then
 		ns.CombatQueue:Flush()
+		if ns.UI then ns.UI:SetCombatLock(false) end
+	elseif event == "PLAYER_REGEN_DISABLED" then
+		if ns.UI then ns.UI:SetCombatLock(true) end
 	end
 end)
 

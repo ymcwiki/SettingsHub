@@ -114,6 +114,23 @@ def main():
 
     print(f"共 {total} 条(差集全量 {len(census)},未选入 {len(census) - total} 条)")
 
+    exposed_path = census_path.parent / "exposed_cvars.json"
+    if exposed_path.exists():
+        exposed = json.loads(exposed_path.read_text())
+        names = sorted(exposed)
+        lines = [
+            f"-- 由 scripts/census2lua.py 生成于 {date.today().isoformat()}:官方设置 UI 触及的 CVar 集(tag:hidden 取反用)",
+            "local ADDON, ns = ...",
+            "",
+            "ns.Data = ns.Data or {}",
+            "ns.Data.exposed = {",
+        ]
+        for n in names:
+            lines.append(f"\t[{lua_str(n)}] = true,")
+        lines += ["}", ""]
+        (ROOT / "Data" / "Exposed.lua").write_text("\n".join(lines))
+        print(f"exposed: {len(names)} 条 -> Exposed.lua")
+
 
 if __name__ == "__main__":
     main()

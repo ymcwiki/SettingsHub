@@ -32,5 +32,12 @@ Data\Curated_E_QoL.lua
 Data\Curated_F_Graphics.lua
 Data\Curated_G_Sound.lua
 Data\Curated_H_Dev.lua
+Data\Exposed.lua
+
+UI\Search.lua
+UI\MainFrame.lua
+UI\Browser.lua
+UI\LogPage.lua
+Integration\OfficialSettings.lua
 
 SelfTest.lua

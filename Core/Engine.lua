@@ -69,6 +69,9 @@ function M:Set(domain, key, value, source)
 	if domain == "cvar" and DESIRED_SOURCES[source] then
 		ns.db.profile.cvar[key] = tostring(value)
 	end
+	if domain == "cvar" and ns.Integration then
+		ns.Integration:NotifyOfficial(key)
+	end
 	self:Notify(domain, key)
 	return "applied"
 end
@@ -123,6 +126,18 @@ function M:ResetToDefault(domain, key)
 		ns.db.profile.cvar[key] = nil
 	end
 	return r, err
+end
+
+-- 一键回暴雪默认:对本插件改过的全部项逐条 ResetToDefault(期望态随之清除)
+function M:ResetAllToDefault()
+	local baseline = ns.db.global.baseline
+	local n, failed = 0, 0
+	for bk in pairs(baseline) do
+		local domain, key = bk:match("^([^:]+):(.+)$")
+		local r = self:ResetToDefault(domain, key)
+		if r == "failed" then failed = failed + 1 else n = n + 1 end
+	end
+	return n, failed
 end
 
 -- 一键全量还原/卸载还原共用:把 baseline 里全部首触原值写回

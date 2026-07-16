@@ -8,8 +8,13 @@ local FILES = {
 	"Adapters/Cvar.lua", "Core/Engine.lua", "Core/Replay.lua",
 	"Data/Curated_A_Camera.lua", "Data/Curated_B_SoftTarget.lua", "Data/Curated_C_Nameplate.lua",
 	"Data/Curated_D_CombatText.lua", "Data/Curated_E_QoL.lua", "Data/Curated_F_Graphics.lua",
-	"Data/Curated_G_Sound.lua", "Data/Curated_H_Dev.lua",
+	"Data/Curated_G_Sound.lua", "Data/Curated_H_Dev.lua", "Data/Exposed.lua",
+	"UI/Search.lua",
 	"SelfTest.lua",
+}
+-- 纯 UI 文件无法在桩里执行,只做编译级语法检查
+local SYNTAX_ONLY = {
+	"UI/MainFrame.lua", "UI/Browser.lua", "UI/LogPage.lua", "Integration/OfficialSettings.lua",
 }
 for _, f in ipairs(FILES) do
 	local chunk = assert(loadfile(ROOT .. "/" .. f))
@@ -140,6 +145,27 @@ t("blame:外部写入记录来源", ns.db.global.blame["cameraZoomSpeed"]
 stub.state.stackAddon = nil
 E:Set("cvar", "cameraZoomSpeed", "1", "test")
 t("blame:自写不覆盖", ns.db.global.blame["cameraZoomSpeed"].by == "EvilAddon")
+
+-- 语法检查:UI 文件能编译
+for _, f in ipairs(SYNTAX_ONLY) do
+	local chunk, err = loadfile(ROOT .. "/" .. f)
+	t("语法:" .. f, chunk ~= nil, err)
+end
+
+-- 搜索索引与过滤词
+ns.Search:Rebuild()
+t("搜索:索引条数", #ns.Search.items == CVAR_TOTAL, #ns.Search.items)
+t("搜索:精确命中", #ns.Search:Query("camerazoomspeed") == 1)
+t("搜索:多词 AND", #ns.Search:Query("camera zoom") == 1)
+t("搜索:tag:secure", #ns.Search:Query("tag:secure") == 1)
+E:Set("cvar", "dummyCvar7", "1", "user")
+t("搜索:tag:modified", #ns.Search:Query("tag:modified") == 1
+	and ns.Search:Query("tag:modified")[1].key == "dummyCvar7")
+t("搜索:tag:hidden 未暴露项不受影响",
+	#ns.Search:Query("dummycvar7 tag:hidden") == #ns.Search:Query("dummycvar7"))
+E:Set("cvar", "dummyCvar7", "0", "test")
+ns.db.profile.cvar["dummyCvar7"] = nil
+t("搜索:类别计数", ns.Search:CategoryCounts()[4] == CVAR_TOTAL)
 
 -- SelfTest 全流程(phase A 布置跨重登标记,phase B 验证)
 local ok = ns.SelfTest:Run()
