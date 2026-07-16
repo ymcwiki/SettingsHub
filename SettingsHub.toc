@@ -1,0 +1,36 @@
+## Interface: 120100
+## Title: SettingsHub
+## Notes: Search, understand, manage and migrate every game setting, exposed or hidden.
+## Notes-zhCN: 游戏内设置中心:官方界面有和没有的设置,都在这里发现、理解、管理、迁移。
+## Author: Weyk
+## Version: @project-version@
+## SavedVariables: SettingsHubDB
+## AddonCompartmentFunc: SettingsHub_OnAddonCompartmentClick
+## X-Curse-Project-ID:
+## X-Wago-ID:
+## X-WoWI-ID:
+
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\AceDB-3.0\AceDB-3.0.lua
+Libs\LibSerialize\LibSerialize.lua
+Libs\LibDeflate\LibDeflate.lua
+
+Core\Bootstrap.lua
+Core\Enum.lua
+Core\CombatQueue.lua
+Core\Blame.lua
+Adapters\Cvar.lua
+Core\Engine.lua
+Core\Replay.lua
+
+Data\Curated_A_Camera.lua
+Data\Curated_B_SoftTarget.lua
+Data\Curated_C_Nameplate.lua
+Data\Curated_D_CombatText.lua
+Data\Curated_E_QoL.lua
+Data\Curated_F_Graphics.lua
+Data\Curated_G_Sound.lua
+Data\Curated_H_Dev.lua
+
+SelfTest.lua
