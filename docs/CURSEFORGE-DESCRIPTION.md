@@ -35,6 +35,18 @@ Eight themed pages with plain-language explanations, sane ranges and patch annot
 - Uninstalling can roll back every change the addon ever made
 - Failed writes (read-only, invalid, combat-locked) are reported, never swallowed
 
+## Named snapshots
+
+- Save the full state of all 1,600+ CVars in one click (up to 10 snapshots, named and stamped with the game build)
+- Diff any snapshot against your live values or against another snapshot: value changes, additions, removals, scope and secure-flag drift
+- Check the rows you want and restore them selectively; every restored value goes through the normal write pipeline, so it is undoable too
+- Take one before and after a patch and see exactly what Blizzard changed
+
+## Conflict detection
+
+- When another addon keeps overwriting a value you manage, SettingsHub notices: three overwrites on separate logins flag it as a conflict
+- The Log page shows who is fighting you and how often, with two one-click resolutions: stop managing that value, or keep yours and let the replay keep winning
+
 ## Settings that actually stick
 
 - Values you pin are replayed at login and re-asserted after loading screens
@@ -60,9 +72,9 @@ Key bindings and modified clicks, macros (imported by name, slot drift reported)
 ## Notes
 
 - Zero-taint by design: CVar access goes through C_CVar only, and the default Settings panel is only touched through the official registration API
-- Curated explanations and UI text are currently in Simplified Chinese; setting names, search keywords and everything data-driven work in English
+- Localized in English and Chinese (Simplified/Traditional): the UI and all curated explanations follow your client language, and search matches both languages either way
 - Bug reports and requests: https://github.com/ymcwiki/SettingsHub or the comments below
 
 ---
 
-**简体中文**:SettingsHub 是 Midnight (12.1+) 的游戏内设置中心。全量 CVar 浏览器加八个中文白话说明的主题面板,官方界面没放出来的隐藏设置也在内;每一次写入先记日志,单条可撤销、可整体还原、卸载可回滚;键位、宏、EditMode 布局、点击施法、静音列表、TTS 一并纳入 profile,支持按副本类型/专精/分辨率/角色四轴自动切换,导入导出带 diff 预览。反馈请到 https://github.com/ymcwiki/SettingsHub 或下方评论。
+**简体中文**:SettingsHub 是 Midnight (12.1+) 的游戏内设置中心,界面与全部策展说明中英双语。全量 CVar 浏览器加八个白话说明的主题面板,官方界面没放出来的隐藏设置也在内;每一次写入先记日志,单条可撤销、可整体还原、卸载可回滚;命名快照全量备份当前设置,补丁前后对比、勾选恢复;别的插件反复覆盖你的设置会被记名点出,一键处置;键位、宏、EditMode 布局、点击施法、静音列表、TTS 一并纳入 profile,支持按副本类型/专精/分辨率/角色四轴自动切换,导入导出带 diff 预览。反馈请到 https://github.com/ymcwiki/SettingsHub 或下方评论。
