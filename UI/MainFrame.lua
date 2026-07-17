@@ -30,6 +30,7 @@ local function selectPage(key)
 		btn.text:SetTextColor(k == key and 1 or 0.9, k == key and 0.82 or 0.9, k == key and 0 or 0.9)
 	end
 	currentPageKey = key
+	M.currentPageKey = key
 	if page.frame.OnPageShow then page.frame:OnPageShow() end
 end
 

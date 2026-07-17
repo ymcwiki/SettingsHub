@@ -265,7 +265,7 @@ function M:Diag()
 	return lines
 end
 
--- /sh probe:打印鼠标当前悬停的框架链,查「点击被谁挡住」;
+-- /sh probe:鼠标焦点链 + 当前页首个勾选行的几何/状态 + 程序化点击回环
 -- 用法:鼠标悬停在问题控件上,聊天框输入 /sh probe 回车(打字期间鼠标别动)
 function M:Probe()
 	local foci
@@ -273,15 +273,42 @@ function M:Probe()
 		foci = GetMouseFoci()
 	elseif GetMouseFocus then
 		foci = { GetMouseFocus() }
-	else
-		ns.Print("no mouse focus API")
-		return
 	end
 	local names = {}
 	for _, f in ipairs(foci or {}) do
 		names[#names + 1] = f.GetDebugName and f:GetDebugName() or tostring(f)
 	end
 	ns.Print("mouse over: " .. (#names > 0 and table.concat(names, "  >  ") or "(none)"))
+
+	local key = ns.UI and ns.UI.currentPageKey
+	local page = key and ns.UI.pages[key]
+	local pf = page and page.frame
+	local row
+	for _, w in ipairs(pf and pf.widgets or {}) do
+		if w.check then row = w break end
+	end
+	if not row then
+		ns.Print("probe: current page has no checkbox row (open a theme page first)")
+		return
+	end
+	local function rect(f)
+		return string.format("L=%.0f B=%.0f W=%.0f H=%.0f lvl=%d strata=%s mouse=%s shown=%s",
+			f:GetLeft() or -1, f:GetBottom() or -1, f:GetWidth() or -1, f:GetHeight() or -1,
+			f:GetFrameLevel(), f:GetFrameStrata(), tostring(f:IsMouseEnabled()), tostring(f:IsVisible()))
+	end
+	ns.Print("row1:   " .. rect(row))
+	ns.Print("check1: " .. rect(row.check) .. "  enabled=" .. tostring(row.check:IsEnabled()))
+	if GetCursorPosition then
+		local cx, cy = GetCursorPosition()
+		local es = row.check:GetEffectiveScale()
+		ns.Print(string.format("cursor(check-space): x=%.0f y=%.0f  scale=%.2f", cx / es, cy / es, es))
+	end
+	-- 程序化点击两次:验证 OnClick 处理器与写管线(净效果为零)
+	local v0 = row.check:GetChecked()
+	row.check:Click()
+	local v1 = row.check:GetChecked()
+	row.check:Click()
+	ns.Print(string.format("click test: %s -> %s -> %s", tostring(v0), tostring(v1), tostring(row.check:GetChecked())))
 end
 
 -- P7 元数据管线入口:全量落盘供仓库脚本 diff
