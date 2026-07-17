@@ -50,8 +50,14 @@ local function build(parent)
 		row:SetPoint("TOPLEFT", 0, y)
 		row:SetSize(820, 10)
 
+		-- 图标按 pack-<key>.png 命名约定加载,无头测试保证文件存在
+		local icon = row:CreateTexture(nil, "ARTWORK")
+		icon:SetSize(48, 48)
+		icon:SetPoint("TOPLEFT", 4, -4)
+		icon:SetTexture("Interface\\AddOns\\SettingsHub\\Media\\pack-" .. pack.key .. ".png")
+
 		local title = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-		title:SetPoint("TOPLEFT", 4, 0)
+		title:SetPoint("TOPLEFT", 62, 0)
 		title:SetText(T(pack.title))
 
 		local count = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -64,8 +70,8 @@ local function build(parent)
 		applyBtn:SetScript("OnClick", function() previewAndConfirm(pack) end)
 
 		local desc = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-		desc:SetPoint("TOPLEFT", 4, -22)
-		desc:SetWidth(660)
+		desc:SetPoint("TOPLEFT", 62, -22)
+		desc:SetWidth(600)
 		desc:SetJustifyH("LEFT")
 		desc:SetWordWrap(true)
 		desc:SetText(T(pack.text))
@@ -73,13 +79,14 @@ local function build(parent)
 		local keys = {}
 		for _, item in ipairs(pack.values) do keys[#keys + 1] = item.key .. "=" .. item.value end
 		local detail = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-		detail:SetPoint("TOPLEFT", 4, -24 - desc:GetStringHeight())
-		detail:SetWidth(780)
+		detail:SetPoint("TOPLEFT", 62, -24 - desc:GetStringHeight())
+		detail:SetWidth(720)
 		detail:SetJustifyH("LEFT")
 		detail:SetWordWrap(true)
 		detail:SetText(table.concat(keys, "   "))
 
 		local h = 30 + desc:GetStringHeight() + detail:GetStringHeight()
+		if h < 56 then h = 56 end
 		row:SetHeight(h)
 		row.count, row.pack = count, pack
 		page.rows[#page.rows + 1] = row

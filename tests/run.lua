@@ -491,6 +491,13 @@ do
 		end
 	end
 	t("推荐包:四个包结构完整且只引用策展项", #ns.Data.packs == 4 and bad == nil, bad)
+	-- 图标按 pack-<key>.png 约定放 Media/,PackPage 据此加载;新加包必须配图标
+	local missingIcon
+	for _, pack in ipairs(ns.Data.packs) do
+		local fh = io.open(ROOT .. "/Media/pack-" .. pack.key .. ".png", "rb")
+		if fh then fh:close() else missingIcon = pack.key end
+	end
+	t("推荐包:图标文件齐全", missingIcon == nil, missingIcon)
 end
 local pvpPack
 for _, p in ipairs(ns.Data.packs) do
