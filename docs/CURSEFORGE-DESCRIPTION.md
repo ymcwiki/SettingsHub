@@ -1,7 +1,7 @@
 # CurseForge 项目页描述(粘贴用)
 
 首次建项目或改版时,把下面内容贴进项目页 Description(编辑器支持 markdown 粘贴后调格式)。
-GitHub 仓库建好后把两处 `https://github.com/ymcwiki/SettingsHub` 换成真实地址。
+GitHub 链接已填真实仓库地址。
 
 ---
 
