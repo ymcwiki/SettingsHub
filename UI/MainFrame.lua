@@ -1,4 +1,5 @@
 local ADDON, ns = ...
+local L = ns.L
 
 local M = { pages = {}, pageOrder = {}, combatLocked = false }
 ns.UI = M
@@ -85,12 +86,12 @@ local function buildFrame()
 
 	local hint = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	hint:SetPoint("LEFT", searchBox, "RIGHT", 10, 0)
-	hint:SetText("过滤词: tag:modified tag:new tag:secure tag:hidden")
+	hint:SetText(L["Filters: tag:modified tag:new tag:secure tag:hidden"])
 
 	combatBanner = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	combatBanner:SetPoint("TOPRIGHT", close, "TOPLEFT", -12, -8)
 	combatBanner:SetTextColor(1, 0.3, 0.3)
-	combatBanner:SetText("战斗中:secure 项已锁定,写入将排队")
+	combatBanner:SetText(L["In combat: secure values locked, writes will queue"])
 	combatBanner:Hide()
 
 	local nav = CreateFrame("Frame", nil, frame)

@@ -63,7 +63,7 @@ function M:Restore(snapshot)
 	end
 	C_ClickBindings.SetProfileByInfo(infos)
 	if #skipped > 0 then
-		ns.Print("点击施法导入:以下宏不存在,对应绑定已跳过: " .. table.concat(skipped, ", "))
+		ns.Print(ns.L["Click-casting import: these macros do not exist, their bindings were skipped: "] .. table.concat(skipped, ", "))
 	end
 	return true, #skipped
 end

@@ -63,14 +63,14 @@ function M:Restore(snapshot)
 				idx = CreateMacro(m.name, m.icon or "INV_MISC_QUESTIONMARK", m.body, perCharacter)
 			end
 			if idx and m.index and idx ~= m.index then
-				drifted[#drifted + 1] = string.format("%s(%d 变 %d)", m.name, m.index, idx)
+				drifted[#drifted + 1] = string.format(ns.L["%s (%d now %d)"], m.name, m.index, idx)
 			end
 		end
 	end
 	restoreSet(snapshot.account, false)
 	restoreSet(snapshot.character, true)
 	if #drifted > 0 then
-		ns.Print("宏槽位发生漂移(动作条上引用槽位号的按钮需要检查): " .. table.concat(drifted, ", "))
+		ns.Print(ns.L["Macro slots drifted (check action bar buttons that reference slot numbers): "] .. table.concat(drifted, ", "))
 	end
 	return true, #drifted
 end

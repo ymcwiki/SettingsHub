@@ -1,4 +1,5 @@
 local ADDON, ns = ...
+local L = ns.L
 
 local M = {}
 ns.SelfTest = M
@@ -23,9 +24,9 @@ local function report()
 			print(string.format("|cffff0000FAIL|r %s%s", r.name, r.detail and (" [" .. tostring(r.detail) .. "]") or ""))
 		end
 	end
-	ns.Print(string.format("自测完成:%d 过 / %d 挂", pass, fail))
+	ns.Print(string.format(L["Self-test done: %d passed / %d failed"], pass, fail))
 	if fail == 0 then
-		ns.Print("合规复查提醒:/console taintLog 2 与 addonCombatRestrictionsForced 1 开着再过一遍主流程")
+		ns.Print(L["Compliance reminder: re-run the main flows with /console taintLog 2 and addonCombatRestrictionsForced 1"])
 	end
 	return fail == 0
 end
@@ -34,24 +35,24 @@ end
 local function roundtrip(label, key, target)
 	local info = ns.Enum:Get(key)
 	if not info then
-		check(label .. ":存在", false, key .. " 未找到")
+		check(label .. L[": exists"], false, key .. L[" not found"])
 		return
 	end
 	local old = ns.Adapters.cvar:Read(key)
 	local prevDesired = ns.db.profile.cvar[key]
 
 	local r = ns.Engine:Set("cvar", key, target, "test")
-	check(label .. ":写入", r == "applied" and ns.Adapters.cvar:Read(key) == target,
+	check(label .. L[": write"], r == "applied" and ns.Adapters.cvar:Read(key) == target,
 		string.format("r=%s cur=%s want=%s", tostring(r), tostring(ns.Adapters.cvar:Read(key)), tostring(target)))
 
 	local entry = ns.Engine:LastEntry()
 	r = ns.Engine:Undo(entry)
-	check(label .. ":撤销", r == "applied" and ns.Adapters.cvar:Read(key) == old,
+	check(label .. L[": undo"], r == "applied" and ns.Adapters.cvar:Read(key) == old,
 		string.format("cur=%s want=%s", tostring(ns.Adapters.cvar:Read(key)), tostring(old)))
 
 	r = ns.Engine:ResetToDefault("cvar", key)
 	local def = ns.Adapters.cvar:Default(key)
-	check(label .. ":回默认", r == "applied" and ns.Adapters.cvar:Read(key) == def,
+	check(label .. L[": reset to default"], r == "applied" and ns.Adapters.cvar:Read(key) == def,
 		string.format("cur=%s def=%s", tostring(ns.Adapters.cvar:Read(key)), tostring(def)))
 
 	if ns.Adapters.cvar:Read(key) ~= old then
@@ -85,16 +86,16 @@ local function replaySurvival()
 	local marker = ns.db.global.selftest
 	if marker then
 		local cur = ns.Adapters.cvar:Read(marker.key)
-		check("重放存活:" .. marker.key .. " 重登后仍为 " .. marker.want, cur == marker.want,
+		check(string.format(L["replay survival: %s still %s after relog"], marker.key, marker.want), cur == marker.want,
 			string.format("cur=%s", tostring(cur)))
 		ns.Engine:Set("cvar", marker.key, marker.old, "test")
 		ns.db.profile.cvar[marker.key] = nil
 		ns.db.global.selftest = nil
-		ns.Print("第三组完成,测试值已复原")
+		ns.Print(L["Third group done, test value restored"])
 	else
 		local key = pickServerStored()
 		if not key then
-			check("重放存活:找到服务器存储候选", false, "候选全不可用")
+			check(L["replay survival: find a server-stored candidate"], false, L["no candidate available"])
 			return
 		end
 		local old = ns.Adapters.cvar:Read(key)
@@ -102,9 +103,9 @@ local function replaySurvival()
 		local r = ns.Engine:Set("cvar", key, want, "test")
 		if r == "applied" then
 			ns.db.global.selftest = { key = key, old = old, want = want, t = time() }
-			ns.Print(string.format("第三组已布置:%s 改为 %s,请重登后再跑 /sh test 完成验证", key, want))
+			ns.Print(string.format(L["Third group staged: %s set to %s. Relog, then run /sh test again to finish"], key, want))
 		else
-			check("重放存活:布置写入", false, key .. " 写入失败")
+			check(L["replay survival: staging write"], false, key .. L[" write failed"])
 		end
 	end
 end
@@ -113,20 +114,20 @@ function M:Run()
 	results = {}
 
 	local ok, n = ns.Enum:Refresh()
-	check(string.format("枚举:>=1600 (实得 %s)", tostring(n)), ok and n >= 1600, not ok and n or nil)
+	check(string.format(L["enum: >=1600 (got %s)"], tostring(n)), ok and n >= 1600, not ok and n or nil)
 
-	roundtrip("普通CVar(cameraZoomSpeed)", "cameraZoomSpeed",
+	roundtrip(L["normal CVar"] .. "(cameraZoomSpeed)", "cameraZoomSpeed",
 		ns.Adapters.cvar:Read("cameraZoomSpeed") == "1" and "1.5" or "1")
 
 	if InCombatLockdown() then
-		check("secureCVar:需在脱战状态跑", false, "当前在战斗中")
+		check(L["secure CVar: must run out of combat"], false, L["currently in combat"])
 	else
 		local skey = pickSecure()
 		if skey then
 			local cur = ns.Adapters.cvar:Read(skey)
-			roundtrip("secureCVar(" .. skey .. ")", skey, cur == "41" and "40" or "41")
+			roundtrip(L["secure CVar"] .. "(" .. skey .. ")", skey, cur == "41" and "40" or "41")
 		else
-			check("secureCVar:找到候选", false, "无可用 secure 项")
+			check(L["secure CVar: find a candidate"], false, L["no usable secure value"])
 		end
 	end
 
@@ -139,7 +140,7 @@ end
 function M:Dump()
 	local ok, n = ns.Enum:Refresh()
 	if not ok then
-		ns.Print("CVar 尚未加载完,稍后再试")
+		ns.Print(L["CVars not fully loaded yet, try again in a moment"])
 		return
 	end
 	local cvars = {}
@@ -155,5 +156,5 @@ function M:Dump()
 	end
 	local _, build = GetBuildInfo()
 	ns.db.global.dump = { t = time(), build = build, version = (GetBuildInfo()), count = n, cvars = cvars }
-	ns.Print(string.format("已落盘 %d 条 CVar 到 SavedVariables(SettingsHubDB.global.dump),退出游戏后可被仓库脚本读取", n))
+	ns.Print(string.format(L["Dumped %d CVars to SavedVariables (SettingsHubDB.global.dump); readable by repo scripts after you exit the game"], n))
 end

@@ -9,6 +9,9 @@ local defaults = {
 		undoLog = { head = 1, entries = {} },
 		baseline = {},
 		blame = {},
+		snapshots = {},
+		conflicts = {},
+		loginCounter = 0,
 		autoSwitch = {
 			-- 角色轴 = AceDB 内建 profileKeys + char.baseProfile,不在此表
 			scene = { enabled = false, map = {} },
@@ -45,6 +48,7 @@ ns.f:SetScript("OnEvent", function(_, event, ...)
 	elseif event == "PLAYER_LOGIN" then
 		ns.Enum:Refresh()
 		ns.Blame:Init()
+		ns.Conflicts:OnLogin()
 		ns.Replay:OnLogin()
 		if ns.Integration then ns.Integration:Register() end
 	elseif event == "PLAYER_ENTERING_WORLD" then
@@ -79,10 +83,10 @@ SlashCmdList.SETTINGSHUB = function(msg)
 		if ns.UI then
 			ns.UI:Toggle()
 		else
-			ns.Print("可用命令: /sh test | /sh dump | /sh undo")
+			ns.Print(ns.L["Commands: /sh test | /sh dump | /sh undo"])
 		end
 	else
-		ns.Print("用法: /sh [test|dump|undo]")
+		ns.Print(ns.L["Usage: /sh [test|dump|undo]"])
 	end
 end
 

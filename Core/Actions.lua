@@ -7,9 +7,9 @@ function ns.Actions.reset_test_cvars()
 	if C_CVar.ResetTestCVars then
 		C_CVar.ResetTestCVars()
 		ns.Enum:Refresh()
-		ns.Print("已重置全部 test_* 实验参数(含 ActionCam 精调)")
+		ns.Print(ns.L["All test_* experimental CVars reset (incl. ActionCam fine-tuning)"])
 	else
-		ns.Print("当前客户端没有 C_CVar.ResetTestCVars")
+		ns.Print(ns.L["This client has no C_CVar.ResetTestCVars"])
 	end
 end
 
@@ -24,5 +24,5 @@ function ns.Actions.fishing_preset()
 	for k, v in pairs(sets) do
 		ns.Engine:Set("cvar", k, v, "user")
 	end
-	ns.Print("钓鱼预设已应用(互动软目标扇区/距离放宽),日志页可整体撤销")
+	ns.Print(ns.L["Fishing preset applied (interaction soft-target arc/range widened); undo it as a whole from the Log page"])
 end

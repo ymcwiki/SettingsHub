@@ -1,4 +1,5 @@
 local ADDON, ns = ...
+local L = ns.L
 
 local ROW_H = 24
 local CAT_W = 110
@@ -12,7 +13,7 @@ local CATEGORY_NAMES = {
 local COL = { name = 0, value = 320, default = 445, scope = 570, flags = 630 }
 
 StaticPopupDialogs["SETTINGSHUB_COPY"] = {
-	text = "Ctrl+C 复制:",
+	text = L["Ctrl+C to copy:"],
 	button1 = CLOSE,
 	hasEditBox = true, editBoxWidth = 320,
 	OnShow = function(self, data)
@@ -25,18 +26,18 @@ StaticPopupDialogs["SETTINGSHUB_COPY"] = {
 }
 
 local function scopeBadge(scope)
-	if scope == "account" then return "|cff4da6ff账号|r" end
-	if scope == "character" then return "|cff66cc66角色|r" end
-	return "|cff999999本机|r"
+	if scope == "account" then return "|cff4da6ff" .. L["Account"] .. "|r" end
+	if scope == "character" then return "|cff66cc66" .. L["Character"] .. "|r" end
+	return "|cff999999" .. L["Machine"] .. "|r"
 end
 
 local function flagText(it)
 	local parts = {}
-	if it.info.secure then parts[#parts + 1] = "|cffff5555安全|r" end
-	if it.info.readonly then parts[#parts + 1] = "|cff888888只读|r" end
-	if it.info.locked then parts[#parts + 1] = "|cff888888锁定|r" end
-	if it.control and it.control.requiresReload then parts[#parts + 1] = "|cffffcc00重载|r" end
-	if it.control and it.control.requiresRestart then parts[#parts + 1] = "|cffff8800重启|r" end
+	if it.info.secure then parts[#parts + 1] = "|cffff5555" .. L["Secure"] .. "|r" end
+	if it.info.readonly then parts[#parts + 1] = "|cff888888" .. L["Read-only"] .. "|r" end
+	if it.info.locked then parts[#parts + 1] = "|cff888888" .. L["Locked"] .. "|r" end
+	if it.control and it.control.requiresReload then parts[#parts + 1] = "|cffffcc00" .. L["Reload"] .. "|r" end
+	if it.control and it.control.requiresRestart then parts[#parts + 1] = "|cffff8800" .. L["Restart"] .. "|r" end
 	return table.concat(parts, " ")
 end
 
@@ -48,16 +49,16 @@ local function commitEdit()
 	if not it then return end
 	local r, err = ns.Engine:Set("cvar", it.key, editor:GetText(), "user")
 	if r == "failed" then
-		ns.Print(string.format("%s 写入失败(%s):可能只读或值非法", it.key, tostring(err)))
+		ns.Print(string.format(L["%s write failed (%s): may be read-only or an invalid value"], it.key, tostring(err)))
 	elseif r == "queued" then
-		ns.Print(string.format("%s 战斗中已排队,脱战后应用", it.key))
+		ns.Print(string.format(L["%s queued during combat, applies when combat ends"], it.key))
 	end
 	ns.UI:Refresh()
 end
 
 local function openEditor(anchor, it)
 	if it.info.secure and ns.UI.combatLocked then
-		ns.Print("战斗中 secure 项已锁定,脱战后再改")
+		ns.Print(L["Secure values are locked in combat, try again after combat"])
 		return
 	end
 	if not editor then
@@ -85,19 +86,19 @@ local function showRowMenu(row, it)
 	end
 	MenuUtil.CreateContextMenu(row, function(_, root)
 		root:CreateTitle(it.key)
-		root:CreateButton(string.format("回默认(%s)", tostring(it.info.default)), function()
+		root:CreateButton(string.format(L["Reset to default (%s)"], tostring(it.info.default)), function()
 			ns.Engine:ResetToDefault("cvar", it.key)
 			ns.UI:Refresh()
 		end)
-		root:CreateButton("复制名称", function()
+		root:CreateButton(L["Copy name"], function()
 			StaticPopup_Show("SETTINGSHUB_COPY", nil, nil, it.key)
 		end)
-		root:CreateButton("复制设置命令", function()
+		root:CreateButton(L["Copy set command"], function()
 			StaticPopup_Show("SETTINGSHUB_COPY", nil, nil,
 				string.format("/console %s %s", it.key, tostring(it.info.value)))
 		end)
 		if ns.Profiles then
-			root:CreateButton("把当前值记入激活 profile", function()
+			root:CreateButton(L["Pin current value to active profile"], function()
 				ns.Profiles:Pin("cvar", it.key)
 			end)
 		end
@@ -107,23 +108,24 @@ end
 local function rowTooltip(row, it)
 	GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
 	GameTooltip:AddLine(it.key, 1, 1, 1)
-	if it.control and it.control.text and it.control.text.zh ~= "" then
-		GameTooltip:AddLine(it.control.text.zh, 0.9, 0.9, 0.6, true)
+	local desc = it.control and ns.ControlText(it.control) or ""
+	if desc ~= "" then
+		GameTooltip:AddLine(desc, 0.9, 0.9, 0.6, true)
 	end
 	if it.info.help ~= "" then
 		GameTooltip:AddLine(it.info.help, 0.6, 0.6, 0.6, true)
 	end
-	GameTooltip:AddDoubleLine("当前值", tostring(it.info.value), 0.8, 0.8, 0.8, 1, 1, 1)
-	GameTooltip:AddDoubleLine("默认值", tostring(it.info.default), 0.8, 0.8, 0.8, 1, 1, 1)
-	GameTooltip:AddDoubleLine("作用域", scopeBadge(it.info.scope), 0.8, 0.8, 0.8)
+	GameTooltip:AddDoubleLine(L["Current"], tostring(it.info.value), 0.8, 0.8, 0.8, 1, 1, 1)
+	GameTooltip:AddDoubleLine(L["Default"], tostring(it.info.default), 0.8, 0.8, 0.8, 1, 1, 1)
+	GameTooltip:AddDoubleLine(L["Scope"], scopeBadge(it.info.scope), 0.8, 0.8, 0.8)
 	local blame = ns.Blame:Get(it.key)
 	if blame then
-		GameTooltip:AddDoubleLine("最后修改", string.format("%s(%s)", blame.by, date("%m-%d %H:%M", blame.t)),
+		GameTooltip:AddDoubleLine(L["Last write"], string.format("%s(%s)", blame.by, date("%m-%d %H:%M", blame.t)),
 			0.8, 0.8, 0.8, 1, 0.7, 0.3)
 	end
 	local v = it.control and it.control.version
 	if v and v.added then
-		GameTooltip:AddDoubleLine("加入版本", v.added, 0.8, 0.8, 0.8, 0.6, 0.9, 1)
+		GameTooltip:AddDoubleLine(L["Added in"], v.added, 0.8, 0.8, 0.8, 0.6, 0.9, 1)
 	end
 	GameTooltip:Show()
 end
@@ -171,7 +173,7 @@ end
 
 local function updateRow(row, it)
 	row.it = it
-	local curated = it.control and it.control.text and it.control.text.zh ~= ""
+	local curated = it.control and ns.ControlText(it.control) ~= ""
 	row.name:SetText((curated and "|cffffcc00•|r " or "") .. it.key)
 	local modified = it.info.value ~= it.info.default
 	row.valueText:SetText(tostring(it.info.value))
@@ -209,11 +211,11 @@ local function build(parent)
 		fs:SetPoint("LEFT", x, 0)
 		fs:SetText(text)
 	end
-	headCol("名称", COL.name + 4)
-	headCol("当前值(点击编辑)", COL.value)
-	headCol("默认值", COL.default)
-	headCol("作用域", COL.scope)
-	headCol("标签", COL.flags)
+	headCol(L["Name"], COL.name + 4)
+	headCol(L["Current (click to edit)"], COL.value)
+	headCol(L["Default"], COL.default)
+	headCol(L["Scope"], COL.scope)
+	headCol(L["Flags"], COL.flags)
 
 	page.scrollBox = CreateFrame("Frame", nil, page, "WowScrollBoxList")
 	page.scrollBox:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -2)
@@ -233,7 +235,7 @@ local function build(parent)
 	function page:RunQuery()
 		local results = ns.Search:Query(ns.UI:GetSearchText(), self.category)
 		self.scrollBox:SetDataProvider(CreateDataProvider(results), ScrollBoxConstants.RetainScrollPosition)
-		self.count:SetFormattedText("%d / %d 项", #results, ns.Enum.count)
+		self.count:SetFormattedText(L["%d / %d entries"], #results, ns.Enum.count)
 	end
 
 	function page:RebuildCategories()
@@ -257,7 +259,7 @@ local function build(parent)
 				self.catButtons[i] = btn
 			end
 			btn:SetPoint("TOPLEFT", 0, y)
-			local label = c.all and "全部" or (CATEGORY_NAMES[c.id] or ("类别" .. tostring(c.id)))
+			local label = c.all and L["All"] or (CATEGORY_NAMES[c.id] or (L["Category"] .. " " .. tostring(c.id)))
 			local sel = (self.category == c.id) or (c.all and self.category == nil)
 			btn.text:SetText(string.format("%s%s (%d)|r", sel and "|cffffcc00" or "|cffcccccc", label, c.n))
 			btn:SetScript("OnClick", function()
@@ -290,4 +292,4 @@ local function build(parent)
 	return page
 end
 
-ns.UI:RegisterPage("browser", "浏览器", build)
+ns.UI:RegisterPage("browser", L["Browser"], build)

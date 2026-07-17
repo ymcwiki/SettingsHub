@@ -4,10 +4,12 @@ local stub = dofile(ROOT .. "/tests/wow_stub.lua")
 
 local ADDON, ns = "SettingsHub", {}
 local FILES = {
+	"Locales/Locale.lua", "Locales/zhCN.lua",
 	"Core/Bootstrap.lua", "Core/Enum.lua", "Core/CombatQueue.lua", "Core/Blame.lua",
 	"Adapters/Cvar.lua", "Adapters/Binding.lua", "Adapters/Macro.lua", "Adapters/EditMode.lua",
 	"Adapters/ClickBinding.lua", "Adapters/MuteSound.lua", "Adapters/TTS.lua", "Adapters/ConsoleExec.lua",
-	"Core/Engine.lua", "Core/Replay.lua", "Core/Actions.lua", "Core/Profiles.lua",
+	"Core/Engine.lua", "Core/Conflicts.lua", "Core/Replay.lua", "Core/Actions.lua", "Core/Profiles.lua",
+	"Core/Snapshots.lua",
 	"Data/Curated_A_Camera.lua", "Data/Curated_B_SoftTarget.lua", "Data/Curated_C_Nameplate.lua",
 	"Data/Curated_D_CombatText.lua", "Data/Curated_E_QoL.lua", "Data/Curated_F_Graphics.lua",
 	"Data/Curated_G_Sound.lua", "Data/Curated_H_Dev.lua", "Data/Exposed.lua",
@@ -17,7 +19,7 @@ local FILES = {
 -- 纯 UI 文件无法在桩里执行,只做编译级语法检查
 local SYNTAX_ONLY = {
 	"UI/MainFrame.lua", "UI/Browser.lua", "UI/Widgets.lua", "UI/ThemePage.lua",
-	"UI/ProfilePage.lua", "UI/LogPage.lua", "Integration/OfficialSettings.lua",
+	"UI/ProfilePage.lua", "UI/SnapshotPage.lua", "UI/LogPage.lua", "Integration/OfficialSettings.lua",
 }
 for _, f in ipairs(FILES) do
 	local chunk = assert(loadfile(ROOT .. "/" .. f))
@@ -52,14 +54,17 @@ stub.fire("ADDON_LOADED", ADDON)
 stub.fire("PLAYER_LOGIN")
 E = ns.Engine
 t("启动:db 初始化", ns.db ~= nil and ns.db.global.undoLog.head == 1)
--- 策展数据完整性:字段齐全、id/key 唯一、officialSearch 全为 bool 且数量达标
+-- 策展数据完整性:zh/en/keywords 三字段齐全、id/key 唯一、officialSearch 全为 bool 且数量达标
 do
 	local total, officialBools, badField, dupe = 0, 0, nil, nil
 	local seenIds, seenKeys = {}, {}
 	local function walk(controls)
 		for _, c in ipairs(controls) do
 			total = total + 1
-			if not c.id or not c.type or not (c.text and c.text.zh and c.text.zh ~= "") then
+			if not c.id or not c.type
+				or not (c.text and c.text.zh and c.text.zh ~= "")
+				or type(c.text.en) ~= "string" or c.text.en == ""
+				or type(c.text.keywords) ~= "table" or #c.text.keywords == 0 then
 				badField = c.id or c.key or "?"
 			end
 			if c.domain and not c.key then badField = c.id end
@@ -80,10 +85,57 @@ do
 	end
 	for _, th in ipairs(ns.Data.themes) do walk(th.controls) end
 	t("策展数据:八主题", #ns.Data.themes == 8)
-	t("策展数据:字段完整", badField == nil, badField)
+	t("策展数据:zh/en/keywords 字段完整", badField == nil, badField)
 	t("策展数据:id/key 唯一", dupe == nil, dupe)
 	t("策展数据:officialSearch bool >= 20", officialBools >= 20, officialBools)
 	t("策展数据:总条数 >= 85", total >= 85, total)
+end
+
+-- T1 本地化:zhCN 表命中、未知键回落、策展文案按语言取值、行标签第一句切分
+do
+	t("本地化:已知键取译文", ns.L["Undo"] == "撤销" and ns.L["Browser"] == "浏览器")
+	t("本地化:未知键回落原文", ns.L["__no_such_key__"] == "__no_such_key__")
+	local zoom
+	for _, th in ipairs(ns.Data.themes) do
+		for _, c in ipairs(th.controls) do
+			if c.key == "cameraZoomSpeed" then zoom = c end
+		end
+	end
+	t("本地化:zhCN 下 ControlText 取中文", ns.ControlText(zoom):find("滚轮", 1, true) == 1)
+	t("本地化:ControlLabel 取第一句", ns.ControlLabel(zoom) == "滚轮缩放速度")
+end
+
+-- T1 本地化:zhCN 表覆盖完整性(源码 L 键 + 数据文件动态键,缺译即挂)
+do
+	local missing
+	local function need(key, where)
+		if rawget(ns.L, key) == nil and not missing then
+			missing = where .. ": " .. key
+		end
+	end
+	local scan = {}
+	for _, f in ipairs(FILES) do scan[#scan + 1] = f end
+	for _, f in ipairs(SYNTAX_ONLY) do scan[#scan + 1] = f end
+	for _, f in ipairs(scan) do
+		if f ~= "Locales/zhCN.lua" then
+			local fh = assert(io.open(ROOT .. "/" .. f, "r"))
+			local src = fh:read("*a")
+			fh:close()
+			for key in src:gmatch('L%["([^"]+)"%]') do need(key, f) end
+		end
+	end
+	local function walkKeys(controls)
+		for _, c in ipairs(controls) do
+			if c.buttonText then need(c.buttonText, c.id) end
+			for _, label in pairs(c.valueLabels or {}) do need(label, c.id) end
+			if c.children then walkKeys(c.children) end
+		end
+	end
+	for _, th in ipairs(ns.Data.themes) do
+		need(th.title, "theme " .. th.key)
+		walkKeys(th.controls)
+	end
+	t("本地化:zhCN 覆盖全部键", missing == nil, missing)
 end
 t("枚举:计数正确且过滤掉 Command", ns.Enum.count == CVAR_TOTAL, ns.Enum.count)
 t("枚举:Command 不在缓存", ns.Enum.cache["reloadui"] == nil)
@@ -345,6 +397,79 @@ t("SelfTest phase B:标记清除且值复原", ns.db.global.selftest == nil
 ns.SelfTest:Dump()
 t("dump:计数一致", ns.db.global.dump and ns.db.global.dump.count == CVAR_TOTAL)
 t("dump:secure 位保留", ns.db.global.dump.cvars["nameplateMaxDistance"].s == 1)
+
+-- T2 命名快照:建立、diff 五类口径、选择性恢复(走写管线可撤销)、上限淘汰
+local s1 = ns.Snapshots:Create("before")
+t("快照:建立且全量计数", s1 ~= nil and s1.count == CVAR_TOTAL and #ns.Snapshots:List() == 1)
+for i = 901, 920 do
+	E:Set("cvar", "dummyCvar" .. i, "7", "test")
+end
+local d = ns.Snapshots:Diff(s1.cvars, ns.Snapshots:CurrentCvars())
+t("快照:diff 检出 20 项值变", #d.changed == 20 and #d.added == 0 and #d.removed == 0
+	and #d.scopeDrift == 0 and #d.secureDrift == 0,
+	string.format("c=%d a=%d r=%d", #d.changed, #d.added, #d.removed))
+t("快照:值变行带双方值", d.changed[1].from == "0" and d.changed[1].to == "7")
+local keys = {}
+for i = 901, 910 do keys[#keys + 1] = "dummyCvar" .. i end
+local rn, rfailed = ns.Snapshots:Restore(s1, keys)
+t("快照:选择性恢复", rn == 10 and rfailed == 0
+	and C_CVar.GetCVar("dummyCvar901") == "0" and C_CVar.GetCVar("dummyCvar911") == "7")
+t("快照:恢复记入期望态", ns.db.profile.cvar["dummyCvar901"] == "0")
+r = E:UndoLast()
+t("快照:恢复可撤销", r == "applied" and C_CVar.GetCVar("dummyCvar910") == "7")
+d = ns.Snapshots:Diff(s1.cvars, ns.Snapshots:CurrentCvars())
+t("快照:恢复后 diff 收敛", #d.changed == 11, #d.changed)
+for i = 901, 920 do
+	E:Set("cvar", "dummyCvar" .. i, "0", "test")
+	ns.db.profile.cvar["dummyCvar" .. i] = nil
+end
+for i = 2, 10 do ns.Snapshots:Create("s" .. i) end
+t("快照:建满 10 份", #ns.Snapshots:List() == 10)
+local sx, xerr = ns.Snapshots:Create("overflow")
+t("快照:超限拒绝待确认", sx == nil and xerr == "full")
+t("快照:最旧的是 before", ns.Snapshots:Oldest() == s1)
+sx = ns.Snapshots:Create("overflow", true)
+local s1Alive = false
+for _, sn in ipairs(ns.Snapshots:List()) do
+	if sn == s1 then s1Alive = true end
+end
+t("快照:确认后淘汰最旧份", sx ~= nil and #ns.Snapshots:List() == 10 and not s1Alive)
+t("快照:删除", ns.Snapshots:Delete(sx) and #ns.Snapshots:List() == 9)
+
+-- T3 冲突检测:外部来源跨登录覆盖 >=3 次判冲突,同登录只计一次,两种处置
+E:Set("cvar", "dummyCvar30", "1", "user")
+local function externalOverwrite()
+	stub.state.stackAddon = "GreedyAddon"
+	C_CVar.SetCVar("dummyCvar30", "0")
+	stub.state.stackAddon = nil
+end
+for i = 1, 2 do
+	externalOverwrite()
+	stub.fire("PLAYER_LOGIN")
+end
+t("冲突:2 登录未达阈值", #ns.Conflicts:List() == 0)
+externalOverwrite()
+stub.fire("PLAYER_LOGIN")
+local conflicts = ns.Conflicts:List()
+t("冲突:3 登录达阈值", #conflicts == 1 and conflicts[1].key == "dummyCvar30"
+	and conflicts[1].by == "GreedyAddon" and conflicts[1].logins == 3,
+	conflicts[1] and (conflicts[1].key .. "/" .. tostring(conflicts[1].by) .. "/" .. tostring(conflicts[1].logins)))
+t("冲突:重放已改回期望值", C_CVar.GetCVar("dummyCvar30") == "1")
+externalOverwrite()
+ns.Replay:Assert()
+t("冲突:同登录内 Assert 不重复计数", ns.Conflicts:List()[1].logins == 3)
+ns.Conflicts:Acknowledge("dummyCvar30", "GreedyAddon")
+t("冲突:保持处置后计数清零且仍管理", #ns.Conflicts:List() == 0
+	and ns.db.profile.cvar["dummyCvar30"] == "1")
+for i = 1, 3 do
+	externalOverwrite()
+	stub.fire("PLAYER_LOGIN")
+end
+t("冲突:保持后重新计数再达阈值", #ns.Conflicts:List() == 1)
+ns.Conflicts:StopManaging("dummyCvar30")
+t("冲突:停止管理清期望态与记录", ns.db.profile.cvar["dummyCvar30"] == nil
+	and #ns.Conflicts:List() == 0)
+E:Set("cvar", "dummyCvar30", "0", "test")
 
 print(string.format("== %s ==", fails == 0 and "ALL PASS" or (fails .. " FAILED")))
 if fails > 0 then error(fails .. " test(s) failed", 0) end

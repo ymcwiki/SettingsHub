@@ -20,7 +20,8 @@ local function curatedIndex()
 	return curatedByKey
 end
 
--- 预构建 lowercase blob:名称 + 白话描述 + 英文关键词 + help 原文(调研第八章:线性扫描够用)
+-- 预构建 lowercase blob:名称 + 中英白话描述 + 关键词 + help 原文(调研第八章:线性扫描够用)
+-- zh/en/keywords 三路全进索引,任何客户端语言下中英俗名都能命中
 function M:Rebuild()
 	local cur = curatedIndex()
 	local items = {}
@@ -30,7 +31,8 @@ function M:Rebuild()
 		if info.help and info.help ~= "" then parts[#parts + 1] = info.help:lower() end
 		if c and c.text then
 			if c.text.zh and c.text.zh ~= "" then parts[#parts + 1] = c.text.zh:lower() end
-			for _, w in ipairs(c.text.en or {}) do parts[#parts + 1] = w:lower() end
+			if c.text.en and c.text.en ~= "" then parts[#parts + 1] = c.text.en:lower() end
+			for _, w in ipairs(c.text.keywords or {}) do parts[#parts + 1] = w:lower() end
 		end
 		items[#items + 1] = { key = name, info = info, control = c, blob = table.concat(parts, " ") }
 	end

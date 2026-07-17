@@ -43,7 +43,7 @@ def main():
         rel = path.relative_to(ROOT)
         if not path.is_file():
             continue
-        if rel.parts[0] in ignores or rel.name.startswith("."):
+        if rel.parts[0] in ignores or any(p.startswith(".") for p in rel.parts):
             continue
         dest = stage / rel
         dest.parent.mkdir(parents=True, exist_ok=True)

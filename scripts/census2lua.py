@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """从 cvar-census/hidden_cvars.json 生成 Data/Curated_*.lua 控件定义骨架。
 
-选择规则来自调研报告第六章的八大主题;text.zh/text.en 留空由 P4 人工填写。
+选择规则来自调研报告第六章的八大主题;text.zh/text.en/keywords 留空由人工策展填写
+(v0.2 schema:zh/en 是两种语言的白话说明,keywords 是搜索关键词数组)。
 运行时 default/scope/secure 以实机 GetCVarInfo 为准,这里只是种子。
 
 用法: python3 scripts/census2lua.py [census_json_path]
@@ -107,7 +108,7 @@ def main():
             if e.get("secure"):
                 fields.append("secure = true")
             lines.append("\t\t{ " + ", ".join(fields) + ",")
-            lines.append('\t\t  text = { zh = "", en = {} },'
+            lines.append('\t\t  text = { zh = "", en = "", keywords = {} },'
                          + (f" help = {lua_str(help_text)}," if help_text else ""))
             lines.append("\t\t},")
         lines += ["\t},", "}", ""]

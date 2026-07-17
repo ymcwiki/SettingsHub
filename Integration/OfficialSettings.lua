@@ -1,4 +1,5 @@
 local ADDON, ns = ...
+local L = ns.L
 
 local M = {}
 ns.Integration = M
@@ -13,11 +14,11 @@ local function registerCanvas()
 	desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
 	desc:SetWidth(560)
 	desc:SetJustifyH("LEFT")
-	desc:SetText("游戏内设置中心:全量 CVar 浏览器、主题面板、撤销日志与 profile。官方搜索只收录精选注册项,完整功能请打开主窗口。")
+	desc:SetText(L["In-game settings center: full CVar browser, themed panels, undo log and profiles. Official search only carries the curated subset; open the main window for everything."])
 	local btn = CreateFrame("Button", nil, canvas, "UIPanelButtonTemplate")
 	btn:SetSize(200, 28)
 	btn:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -18)
-	btn:SetText("打开 SettingsHub")
+	btn:SetText(L["Open SettingsHub"])
 	btn:SetScript("OnClick", function() ns.UI:Toggle() end)
 
 	local category = Settings.RegisterCanvasLayoutCategory(canvas, "SettingsHub")
@@ -30,13 +31,13 @@ local variableByKey = {}
 
 local function registerVerticalSubset()
 	if not (Settings.RegisterVerticalLayoutCategory and Settings.RegisterAddOnSetting) then return end
-	local category = Settings.RegisterVerticalLayoutCategory("SettingsHub 精选")
+	local category = Settings.RegisterVerticalLayoutCategory(L["SettingsHub Picks"])
 	local proxy = {}
 	local n = 0
 	for _, th in ipairs(ns.Data.themes or {}) do
 		for _, c in ipairs(th.controls) do
 			if c.officialSearch and c.domain == "cvar" and c.type == "bool"
-				and c.text and c.text.zh ~= "" then
+				and ns.ControlText(c) ~= "" then
 				local info = ns.Enum:Get(c.key)
 				if info and not info.readonly then
 					local variable = "SETTINGSHUB_" .. c.id
@@ -49,9 +50,10 @@ local function registerVerticalSubset()
 						ns.Engine:Set("cvar", c.key, s:GetValue() and "1" or "0", "user")
 						M._fromOfficial = false
 					end)
-					local initializer = Settings.CreateCheckbox(category, setting, c.text.zh)
+					-- 官方面板行名用当前语言描述,搜索标签中英关键词都注册
+					local initializer = Settings.CreateCheckbox(category, setting, ns.ControlLabel(c))
 					if initializer and initializer.AddSearchTags then
-						initializer:AddSearchTags(c.key, unpack(c.text.en or {}))
+						initializer:AddSearchTags(c.key, unpack(c.text.keywords or {}))
 					end
 					n = n + 1
 				end

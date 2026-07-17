@@ -1,4 +1,5 @@
 local ADDON, ns = ...
+local L = ns.L
 
 local function buildThemePage(theme)
 	return function(parent)
@@ -30,7 +31,7 @@ local function buildThemePage(theme)
 		if theme.key == "G" then
 			local header = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 			header:SetPoint("TOPLEFT", 4, y - 10)
-			header:SetText("静音音效列表(MuteSoundFile,登录自动重放)")
+			header:SetText(L["Muted sounds (MuteSoundFile, replayed at login)"])
 			local input = CreateFrame("EditBox", nil, content, "InputBoxTemplate")
 			input:SetSize(120, 20)
 			input:SetPoint("TOPLEFT", 8, y - 34)
@@ -39,7 +40,7 @@ local function buildThemePage(theme)
 			local addBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
 			addBtn:SetSize(60, 22)
 			addBtn:SetPoint("LEFT", input, "RIGHT", 8, 0)
-			addBtn:SetText("添加")
+			addBtn:SetText(L["Add"])
 			addBtn:SetScript("OnClick", function()
 				local id = input:GetNumber()
 				if id and id > 0 then
@@ -50,7 +51,7 @@ local function buildThemePage(theme)
 			end)
 			local hint = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 			hint:SetPoint("LEFT", addBtn, "RIGHT", 8, 0)
-			hint:SetText("输入 soundKitFile 的 fileID(wago.tools 可查)")
+			hint:SetText(L["Enter a soundKitFile fileID (look it up on wago.tools)"])
 			y = y - 62
 			page.muteRows = {}
 			page.muteAnchorY = y
@@ -67,18 +68,18 @@ local function buildThemePage(theme)
 						r.temp = CreateFrame("Button", nil, r, "UIPanelButtonTemplate")
 						r.temp:SetSize(76, 18)
 						r.temp:SetPoint("LEFT", 160, 0)
-						r.temp:SetText("临时解除")
+						r.temp:SetText(L["Unmute now"])
 						r.del = CreateFrame("Button", nil, r, "UIPanelButtonTemplate")
 						r.del:SetSize(50, 18)
 						r.del:SetPoint("LEFT", r.temp, "RIGHT", 6, 0)
-						r.del:SetText("移除")
+						r.del:SetText(L["Remove"])
 						self.muteRows[i] = r
 					end
 					r:SetPoint("TOPLEFT", 0, ry)
 					r.text:SetText(tostring(fileID))
 					r.temp:SetScript("OnClick", function()
 						ns.Adapters.mutesound:TempUnmute(fileID)
-						ns.Print(string.format("%d 本次会话解除静音,下次登录恢复", fileID))
+						ns.Print(string.format(L["%d unmuted for this session, mutes again next login"], fileID))
 					end)
 					r.del:SetScript("OnClick", function()
 						ns.Engine:Set("mutesound", tostring(fileID), "0", "user")
@@ -95,13 +96,13 @@ local function buildThemePage(theme)
 		local footer = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 		footer:SetPoint("BOTTOMLEFT", 4, 8)
 		if hiddenCount > 0 then
-			footer:SetFormattedText("另有 %d 项待实机验证(TODO:VERIFY)后开放", hiddenCount)
+			footer:SetFormattedText(L["%d more entries hidden until verified in game (TODO:VERIFY)"], hiddenCount)
 		end
 
 		page.reloadBtn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
 		page.reloadBtn:SetSize(120, 22)
 		page.reloadBtn:SetPoint("BOTTOMRIGHT", -30, 4)
-		page.reloadBtn:SetText("重载界面生效")
+		page.reloadBtn:SetText(L["Reload UI to apply"])
 		page.reloadBtn:SetScript("OnClick", function()
 			if C_UI and C_UI.Reload then C_UI.Reload() end
 		end)
@@ -122,5 +123,5 @@ local function buildThemePage(theme)
 end
 
 for _, theme in ipairs(ns.Data.themes or {}) do
-	ns.UI:RegisterPage("theme_" .. theme.key, theme.key .. " · " .. theme.title, buildThemePage(theme))
+	ns.UI:RegisterPage("theme_" .. theme.key, theme.key .. " · " .. L[theme.title], buildThemePage(theme))
 end

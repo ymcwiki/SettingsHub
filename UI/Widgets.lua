@@ -1,4 +1,5 @@
 local ADDON, ns = ...
+local L = ns.L
 
 local W = {}
 ns.Widgets = W
@@ -24,9 +25,9 @@ end
 local function setValue(control, v)
 	local r, err = ns.Engine:Set(control.domain, control.key, v, "user")
 	if r == "failed" then
-		ns.Print(string.format("%s 写入失败(%s)", control.key, tostring(err)))
+		ns.Print(string.format(L["%s write failed (%s)"], control.key, tostring(err)))
 	elseif r == "queued" then
-		ns.Print(string.format("%s 战斗中已排队,脱战后应用", control.key))
+		ns.Print(string.format(L["%s queued during combat, applies when combat ends"], control.key))
 	elseif r == "applied" and control.requiresReload then
 		ns.Pending[control.id] = true
 	end
@@ -34,34 +35,36 @@ local function setValue(control, v)
 	return r
 end
 
+local SCOPE_NAMES = { account = L["Account"], character = L["Character"], machine = L["Machine"] }
+
 local function controlTooltip(owner, control)
 	GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
 	GameTooltip:AddLine(control.key or control.id, 1, 1, 1)
-	if control.text and control.text.zh ~= "" then
-		GameTooltip:AddLine(control.text.zh, 0.9, 0.9, 0.6, true)
+	local desc = ns.ControlText(control)
+	if desc ~= "" then
+		GameTooltip:AddLine(desc, 0.9, 0.9, 0.6, true)
 	end
 	if control.domain == "cvar" and control.key then
 		local info = ns.Enum:Get(control.key)
 		if info then
-			GameTooltip:AddDoubleLine("当前值", tostring(info.value), 0.8, 0.8, 0.8, 1, 1, 1)
-			GameTooltip:AddDoubleLine("默认值", tostring(info.default), 0.8, 0.8, 0.8, 1, 1, 1)
-			GameTooltip:AddDoubleLine("作用域", info.scope == "account" and "账号"
-				or info.scope == "character" and "角色" or "本机", 0.8, 0.8, 0.8, 1, 1, 1)
+			GameTooltip:AddDoubleLine(L["Current"], tostring(info.value), 0.8, 0.8, 0.8, 1, 1, 1)
+			GameTooltip:AddDoubleLine(L["Default"], tostring(info.default), 0.8, 0.8, 0.8, 1, 1, 1)
+			GameTooltip:AddDoubleLine(L["Scope"], SCOPE_NAMES[info.scope] or info.scope, 0.8, 0.8, 0.8, 1, 1, 1)
 			local blame = ns.Blame:Get(control.key)
 			if blame then
-				GameTooltip:AddDoubleLine("最后修改", string.format("%s(%s)", blame.by, date("%m-%d %H:%M", blame.t)),
+				GameTooltip:AddDoubleLine(L["Last write"], string.format("%s(%s)", blame.by, date("%m-%d %H:%M", blame.t)),
 					0.8, 0.8, 0.8, 1, 0.7, 0.3)
 			end
 		end
 	end
 	if control.noReadback then
-		GameTooltip:AddLine("此项无法回读,按期望态记录并登录重放", 1, 0.6, 0.3, true)
+		GameTooltip:AddLine(L["No readback: recorded as desired state and replayed at login"], 1, 0.6, 0.3, true)
 	end
-	if control.requiresReload then GameTooltip:AddLine("改动后需 /reload 生效", 1, 0.8, 0, true) end
-	if control.requiresRestart then GameTooltip:AddLine("改动后需重启游戏生效", 1, 0.6, 0, true) end
+	if control.requiresReload then GameTooltip:AddLine(L["Takes effect after /reload"], 1, 0.8, 0, true) end
+	if control.requiresRestart then GameTooltip:AddLine(L["Takes effect after a game restart"], 1, 0.6, 0, true) end
 	local v = control.version
 	if v and v.added then
-		GameTooltip:AddDoubleLine("加入版本", v.added, 0.8, 0.8, 0.8, 0.6, 0.9, 1)
+		GameTooltip:AddDoubleLine(L["Added in"], v.added, 0.8, 0.8, 0.8, 0.6, 0.9, 1)
 	end
 	if v and v.changed then
 		for _, ch in ipairs(v.changed) do
@@ -77,14 +80,13 @@ local function attachTooltip(f, control)
 end
 
 local function labelText(control)
-	local zh = control.text and control.text.zh or ""
-	local head = zh:match("^([^。:]+)") or control.key or control.id
+	local head = ns.ControlLabel(control)
 	local marks = {}
-	if control.secure then marks[#marks + 1] = "|cffff5555安全|r" end
-	if control.requiresReload then marks[#marks + 1] = "|cffffcc00重载|r" end
-	if control.requiresRestart then marks[#marks + 1] = "|cffff8800重启|r" end
+	if control.secure then marks[#marks + 1] = "|cffff5555" .. L["Secure"] .. "|r" end
+	if control.requiresReload then marks[#marks + 1] = "|cffffcc00" .. L["Reload"] .. "|r" end
+	if control.requiresRestart then marks[#marks + 1] = "|cffff8800" .. L["Restart"] .. "|r" end
 	local vv = control.version
-	if vv and vv.added and vv.added:find("^12%.1") then marks[#marks + 1] = "|cff66ccff12.1 新|r" end
+	if vv and vv.added and vv.added:find("^12%.1") then marks[#marks + 1] = "|cff66ccff" .. L["12.1 New"] .. "|r" end
 	return head .. (#marks > 0 and ("  " .. table.concat(marks, " ")) or "")
 end
 
@@ -107,7 +109,7 @@ local function markModified(f, control)
 		local info = ns.Enum:Get(control.key)
 		modified = info and info.value ~= info.default
 	end
-	local pending = ns.Pending[control.id] and "  |cffffcc00待重载|r" or ""
+	local pending = ns.Pending[control.id] and ("  |cffffcc00" .. L["Pending reload"] .. "|r") or ""
 	f.label:SetText((modified and "|cffff9922*|r " or "") .. labelText(control) .. pending)
 	local locked = control.secure and ns.UI.combatLocked
 	f:SetAlpha(locked and 0.4 or 1)
@@ -151,7 +153,7 @@ local function editBuilder(parent, control)
 	if control.range then
 		local hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 		hint:SetPoint("LEFT", f.edit, "RIGHT", 8, 0)
-		hint:SetFormattedText("%s 到 %s", trimNum(control.range[1]), trimNum(control.range[2]))
+		hint:SetFormattedText(L["%s to %s"], trimNum(control.range[1]), trimNum(control.range[2]))
 	end
 	function f:Update()
 		local locked = markModified(self, control)
@@ -172,7 +174,7 @@ function builders.enum(parent, control)
 	f.btn:SetPoint("LEFT", CTRL_X, 0)
 	local function display(v)
 		local label = control.valueLabels and control.valueLabels[tostring(v)]
-		return label and string.format("%s(%s)", label, tostring(v)) or tostring(v)
+		return label and string.format("%s(%s)", L[label], tostring(v)) or tostring(v)
 	end
 	f.btn:SetScript("OnClick", function()
 		local cur = tostring(curValue(control) or control.values[1])
@@ -193,7 +195,7 @@ function builders.enum(parent, control)
 end
 
 StaticPopupDialogs["SETTINGSHUB_ACTION_CONFIRM"] = {
-	text = "确认执行:%s?",
+	text = L["Run: %s?"],
 	button1 = YES, button2 = NO,
 	OnAccept = function(self, run)
 		if ns.Actions[run] then ns.Actions[run]() end
@@ -207,10 +209,11 @@ function builders.action(parent, control)
 	f.btn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
 	f.btn:SetSize(150, 24)
 	f.btn:SetPoint("LEFT", CTRL_X, 0)
-	f.btn:SetText(control.buttonText or "执行")
+	f.btn:SetText(control.buttonText and L[control.buttonText] or L["Run"])
 	f.btn:SetScript("OnClick", function()
 		if control.confirm then
-			StaticPopup_Show("SETTINGSHUB_ACTION_CONFIRM", control.buttonText or control.id, nil, control.run)
+			StaticPopup_Show("SETTINGSHUB_ACTION_CONFIRM",
+				control.buttonText and L[control.buttonText] or control.id, nil, control.run)
 		else
 			if ns.Actions[control.run] then ns.Actions[control.run]() end
 			ns.UI:Refresh()

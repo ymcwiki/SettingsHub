@@ -1,25 +1,27 @@
 local ADDON, ns = ...
+local L = ns.L
 
 local ROW_H = 22
 local RING_SIZE = 500
+local CONFLICT_MAX_ROWS = 6
 
 StaticPopupDialogs["SETTINGSHUB_RESTORE_BASELINE"] = {
-	text = "把本插件改过的 %d 项全部还原为首次改动前的值?",
+	text = L["Restore all %d values this addon has changed to their pre-change originals?"],
 	button1 = YES, button2 = NO,
 	OnAccept = function()
 		local n, failed = ns.Engine:RestoreAll("restore")
-		ns.Print(string.format("已还原 %d 项,失败 %d 项", n, failed))
+		ns.Print(string.format(L["Restored %d values, %d failed"], n, failed))
 		ns.UI:Refresh()
 	end,
 	timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
 }
 
 StaticPopupDialogs["SETTINGSHUB_RESET_DEFAULTS"] = {
-	text = "把本插件改过的 %d 项全部重置为暴雪默认值?这会丢弃你的当前设定。",
+	text = L["Reset all %d values this addon has changed to Blizzard defaults? Your current settings will be lost."],
 	button1 = YES, button2 = NO,
 	OnAccept = function()
 		local n, failed = ns.Engine:ResetAllToDefault()
-		ns.Print(string.format("已回默认 %d 项,失败 %d 项", n, failed))
+		ns.Print(string.format(L["Reset %d values to default, %d failed"], n, failed))
 		ns.UI:Refresh()
 	end,
 	timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
@@ -38,8 +40,9 @@ local function collectEntries()
 end
 
 local SOURCE_NAMES = {
-	user = "手动", import = "导入", replay = "重放", undo = "撤销", reset = "回默认",
-	uninstall = "卸载还原", restore = "还原", test = "自测", profile = "profile",
+	user = L["manual"], import = L["import"], replay = L["replay"], undo = L["undo"],
+	reset = L["reset"], uninstall = L["uninstall"], restore = L["restore"], test = L["selftest"],
+	profile = L["profile"], snapshot = L["snapshot"],
 }
 
 local function buildRow(row)
@@ -61,7 +64,7 @@ local function buildRow(row)
 	row.undoBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
 	row.undoBtn:SetSize(56, 18)
 	row.undoBtn:SetPoint("RIGHT", -4, 0)
-	row.undoBtn:SetText("撤销")
+	row.undoBtn:SetText(L["Undo"])
 	row.undoBtn:SetScript("OnClick", function()
 		if row.entry then
 			ns.Engine:Undo(row.entry)
@@ -76,9 +79,9 @@ local function updateRow(row, e)
 	row.source:SetText(SOURCE_NAMES[e.source] or e.source)
 	row.key:SetText(e.key)
 	if e.bulk then
-		row.change:SetFormattedText("[整域快照] %s", tostring(e.new))
+		row.change:SetFormattedText(L["[domain snapshot] %s"], tostring(e.new))
 	else
-		row.change:SetFormattedText("%s 改为 %s", tostring(e.old), tostring(e.new))
+		row.change:SetFormattedText(L["%s changed to %s"], tostring(e.old), tostring(e.new))
 	end
 	if e.failed then
 		row.change:SetTextColor(1, 0.3, 0.3)
@@ -87,7 +90,7 @@ local function updateRow(row, e)
 	end
 	local canUndo = not e.failed and not e.undone and e.source ~= "undo"
 	row.undoBtn:SetShown(canUndo)
-	if e.undone then row.source:SetText((SOURCE_NAMES[e.source] or e.source) .. "|cff888888(已撤销)|r") end
+	if e.undone then row.source:SetText((SOURCE_NAMES[e.source] or e.source) .. "|cff888888(" .. L["undone"] .. ")|r") end
 end
 
 local function build(parent)
@@ -96,7 +99,7 @@ local function build(parent)
 	local undoLast = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
 	undoLast:SetSize(120, 22)
 	undoLast:SetPoint("TOPLEFT", 0, 0)
-	undoLast:SetText("撤销最近一次")
+	undoLast:SetText(L["Undo last"])
 	undoLast:SetScript("OnClick", function()
 		ns.Engine:UndoLast()
 		ns.UI:Refresh()
@@ -105,27 +108,36 @@ local function build(parent)
 	local restore = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
 	restore:SetSize(140, 22)
 	restore:SetPoint("LEFT", undoLast, "RIGHT", 8, 0)
-	restore:SetText("还原为改动前")
+	restore:SetText(L["Restore originals"])
 	restore:SetScript("OnClick", function()
 		local n = 0
 		for _ in pairs(ns.db.global.baseline) do n = n + 1 end
-		if n == 0 then ns.Print("本插件还没有改过任何项") return end
+		if n == 0 then ns.Print(L["This addon has not changed anything yet"]) return end
 		StaticPopup_Show("SETTINGSHUB_RESTORE_BASELINE", n)
 	end)
 
 	local resetAll = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
 	resetAll:SetSize(140, 22)
 	resetAll:SetPoint("LEFT", restore, "RIGHT", 8, 0)
-	resetAll:SetText("全部回暴雪默认")
+	resetAll:SetText(L["All to Blizzard defaults"])
 	resetAll:SetScript("OnClick", function()
 		local n = 0
 		for _ in pairs(ns.db.global.baseline) do n = n + 1 end
-		if n == 0 then ns.Print("本插件还没有改过任何项") return end
+		if n == 0 then ns.Print(L["This addon has not changed anything yet"]) return end
 		StaticPopup_Show("SETTINGSHUB_RESET_DEFAULTS", n)
 	end)
 
 	page.status = page:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	page.status:SetPoint("LEFT", resetAll, "RIGHT", 16, 0)
+
+	-- T3 冲突区:期望态被同一外部来源跨登录反复覆盖(≥3 次)的项,给出处置按钮
+	page.conflictHeader = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	page.conflictHeader:SetPoint("TOPLEFT", 0, -32)
+	page.conflictHeader:SetText("|cffff7733" .. L["Conflicts: these values keep getting overwritten by other addons"] .. "|r")
+	page.conflictHeader:Hide()
+	page.conflictRows = {}
+	page.conflictOverflow = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	page.conflictOverflow:Hide()
 
 	page.scrollBox = CreateFrame("Frame", nil, page, "WowScrollBoxList")
 	page.scrollBox:SetPoint("TOPLEFT", 0, -30)
@@ -142,13 +154,83 @@ local function build(parent)
 	end)
 	ScrollUtil.InitScrollBoxListWithScrollBar(page.scrollBox, page.scrollBar, view)
 
+	local function conflictRow(i)
+		local r = page.conflictRows[i]
+		if r then return r end
+		r = CreateFrame("Frame", nil, page)
+		r:SetSize(700, 20)
+		r.text = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		r.text:SetPoint("LEFT", 8, 0)
+		r.text:SetWidth(430)
+		r.text:SetJustifyH("LEFT")
+		r.text:SetWordWrap(false)
+		r.stopBtn = CreateFrame("Button", nil, r, "UIPanelButtonTemplate")
+		r.stopBtn:SetSize(96, 18)
+		r.stopBtn:SetPoint("LEFT", 444, 0)
+		r.stopBtn:SetText(L["Stop managing"])
+		r.stopBtn:SetScript("OnClick", function()
+			if r.conflict then
+				ns.Conflicts:StopManaging(r.conflict.key)
+				ns.Print(string.format(L["%s removed from desired state, no longer replayed"], r.conflict.key))
+				page:OnPageShow()
+			end
+		end)
+		r.keepBtn = CreateFrame("Button", nil, r, "UIPanelButtonTemplate")
+		r.keepBtn:SetSize(96, 18)
+		r.keepBtn:SetPoint("LEFT", r.stopBtn, "RIGHT", 6, 0)
+		r.keepBtn:SetText(L["Keep mine"])
+		r.keepBtn:SetScript("OnClick", function()
+			if r.conflict then
+				ns.Conflicts:Acknowledge(r.conflict.key, r.conflict.by)
+				ns.Print(string.format(L["%s kept: still replayed to your desired value each login"], r.conflict.key))
+				page:OnPageShow()
+			end
+		end)
+		page.conflictRows[i] = r
+		return r
+	end
+
+	function page:RefreshConflicts()
+		local list = ns.Conflicts and ns.Conflicts:List() or {}
+		for _, r in ipairs(self.conflictRows) do r:Hide() end
+		self.conflictOverflow:Hide()
+		local y = -30
+		if #list > 0 then
+			self.conflictHeader:Show()
+			y = y - 20
+			local shown = math.min(#list, CONFLICT_MAX_ROWS)
+			for i = 1, shown do
+				local c = list[i]
+				local r = conflictRow(i)
+				r:SetPoint("TOPLEFT", 0, y)
+				r.conflict = c
+				r.text:SetFormattedText(L["%s overwritten by %s on %d logins"], c.key, c.by, c.logins)
+				r:Show()
+				y = y - 22
+			end
+			if #list > shown then
+				self.conflictOverflow:SetPoint("TOPLEFT", 8, y)
+				self.conflictOverflow:SetFormattedText(L["...and %d more"], #list - shown)
+				self.conflictOverflow:Show()
+				y = y - 18
+			end
+			y = y - 6
+		else
+			self.conflictHeader:Hide()
+		end
+		self.scrollBox:ClearAllPoints()
+		self.scrollBox:SetPoint("TOPLEFT", 0, y)
+		self.scrollBox:SetPoint("BOTTOMRIGHT", -22, 2)
+	end
+
 	function page:OnPageShow()
+		self:RefreshConflicts()
 		self.scrollBox:SetDataProvider(CreateDataProvider(collectEntries()))
 		local qn = ns.CombatQueue:Size()
 		local fn = #ns.Engine.failures
 		local parts = {}
-		if qn > 0 then parts[#parts + 1] = string.format("|cffffcc00战斗队列 %d 项|r", qn) end
-		if fn > 0 then parts[#parts + 1] = string.format("|cffff5555本次会话失败 %d 项|r", fn) end
+		if qn > 0 then parts[#parts + 1] = string.format("|cffffcc00" .. L["%d queued in combat"] .. "|r", qn) end
+		if fn > 0 then parts[#parts + 1] = string.format("|cffff5555" .. L["%d failed this session"] .. "|r", fn) end
 		self.status:SetText(table.concat(parts, "  "))
 	end
 
@@ -159,4 +241,4 @@ local function build(parent)
 	return page
 end
 
-ns.UI:RegisterPage("log", "日志与还原", build)
+ns.UI:RegisterPage("log", L["Log & Restore"], build)

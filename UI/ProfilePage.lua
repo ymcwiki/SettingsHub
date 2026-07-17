@@ -1,19 +1,20 @@
 local ADDON, ns = ...
+local L = ns.L
 
 local DOMAIN_NAMES = {
-	cvar = "CVar", binding = "键位", macro = "宏", editmode = "EditMode",
-	clickbinding = "点击施法", mutesound = "静音列表", tts = "TTS", consoleexec = "console 命令",
+	cvar = "CVar", binding = L["Keybinds"], macro = L["Macros"], editmode = "EditMode",
+	clickbinding = L["Click casting"], mutesound = L["Mute list"], tts = "TTS", consoleexec = L["Console commands"],
 }
 local DOMAIN_ORDER = { "cvar", "binding", "macro", "editmode", "clickbinding", "mutesound", "tts", "consoleexec" }
-local SCENE_NAMES = { party = "地城", raid = "团本", arena = "竞技场", pvp = "战场", world = "野外" }
+local SCENE_NAMES = { party = L["Dungeon"], raid = L["Raid"], arena = L["Arena"], pvp = L["Battleground"], world = L["Open world"] }
 local LEAVE_MODES = { "prompt", "restore", "keep" }
-local LEAVE_NAMES = { prompt = "提示我", restore = "自动回落", keep = "保持不动" }
+local LEAVE_NAMES = { prompt = L["Ask me"], restore = L["Auto fall back"], keep = L["Keep as is"] }
 
 StaticPopupDialogs["SETTINGSHUB_PROFILE_LEAVE"] = {
-	text = "已离开自动切换的上下文,回到基准 profile [%s]?",
+	text = L["Left the auto-switch context. Return to base profile [%s]?"],
 	button1 = YES, button2 = NO,
 	OnAccept = function(_, base)
-		ns.Profiles:Switch(base, "上下文退出", true)
+		ns.Profiles:Switch(base, L["context left"], true)
 	end,
 	timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
 }
@@ -28,13 +29,13 @@ StaticPopupDialogs["SETTINGSHUB_IMPORT_CONFIRM"] = {
 }
 
 StaticPopupDialogs["SETTINGSHUB_NEW_PROFILE"] = {
-	text = "新 profile 名字:",
+	text = L["New profile name:"],
 	button1 = ACCEPT, button2 = CANCEL,
 	hasEditBox = true,
 	OnAccept = function(self)
 		local name = self.editBox:GetText():match("^%s*(.-)%s*$")
 		if name ~= "" then
-			ns.Profiles:Switch(name, "新建")
+			ns.Profiles:Switch(name, L["created"])
 			ns.UI:Refresh()
 		end
 	end,
@@ -61,6 +62,8 @@ local function makeCycler(parent, width, getOptions, getCurrent, onSelect)
 	return btn
 end
 
+local NONE_OPTION = L["(none)"]
+
 local function build(parent)
 	local page = CreateFrame("Frame", nil, parent)
 	local refreshers = {}
@@ -72,14 +75,14 @@ local function build(parent)
 	local title = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	title:SetPoint("TOPLEFT", 4, -2)
 	refreshers[#refreshers + 1] = function()
-		title:SetFormattedText("当前 profile: |cffffcc00%s|r(角色基准: %s)",
+		title:SetFormattedText(L["Active profile: |cffffcc00%s|r (character base: %s)"],
 			ns.Profiles:Current(), ns.db.char.baseProfile or "Default")
 	end
 
 	local newBtn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
 	newBtn:SetSize(80, 22)
 	newBtn:SetPoint("TOPLEFT", 0, -24)
-	newBtn:SetText("新建/切换")
+	newBtn:SetText(L["New/Switch"])
 	newBtn:SetScript("OnClick", function() StaticPopup_Show("SETTINGSHUB_NEW_PROFILE") end)
 
 	local profileCycler
@@ -87,18 +90,18 @@ local function build(parent)
 		function() return ns.Profiles:List() end,
 		function() return ns.Profiles:Current() end,
 		function(v)
-			ns.Profiles:Switch(v, "手动切换")
+			ns.Profiles:Switch(v, L["manual switch"])
 			onShowAll()
 		end)
 	profileCycler:SetPoint("LEFT", newBtn, "RIGHT", 8, 0)
 	refreshers[#refreshers + 1] = function()
-		profileCycler:Refresh(function(v) return "切换: " .. tostring(v) end)
+		profileCycler:Refresh(function(v) return L["Switch: "] .. tostring(v) end)
 	end
 
 	-- 域勾选 + 捕获
 	local domHeader = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	domHeader:SetPoint("TOPLEFT", 0, -58)
-	domHeader:SetText("本 profile 收录的域(勾选后才随 profile 应用/导出)")
+	domHeader:SetText(L["Domains in this profile (only checked domains apply/export with it)"])
 	local x, checkboxes = 0, {}
 	for _, d in ipairs(DOMAIN_ORDER) do
 		local cb = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
@@ -120,7 +123,7 @@ local function build(parent)
 	local capBtn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
 	capBtn:SetSize(200, 22)
 	capBtn:SetPoint("TOPLEFT", 0, -104)
-	capBtn:SetText("捕获勾选域的当前状态")
+	capBtn:SetText(L["Capture checked domains now"])
 	capBtn:SetScript("OnClick", function()
 		for _, d in ipairs(ns.Profiles.BULK_DOMAINS) do
 			if ns.db.profile.domains[d] then ns.Profiles:CaptureDomain(d) end
@@ -128,15 +131,15 @@ local function build(parent)
 	end)
 	local capHint = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	capHint:SetPoint("LEFT", capBtn, "RIGHT", 8, 0)
-	capHint:SetText("键位/宏/EditMode/点击施法/TTS 是快照式,改完要重新捕获")
+	capHint:SetText(L["Keybinds/macros/EditMode/click casting/TTS are snapshots: re-capture after changing them"])
 
 	-- 四轴自动切换
 	local axisHeader = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	axisHeader:SetPoint("TOPLEFT", 0, -136)
-	axisHeader:SetText("自动切换(优先级:场景 > 专精 > 分辨率 > 角色基准)")
+	axisHeader:SetText(L["Auto-switch (priority: scene > spec > resolution > character base)"])
 
 	local function profileOptions()
-		local opts = { "(无)" }
+		local opts = { NONE_OPTION }
 		for _, p in ipairs(ns.Profiles:List()) do opts[#opts + 1] = p end
 		return opts
 	end
@@ -146,9 +149,9 @@ local function build(parent)
 		label:SetText(labelText)
 		local cycler
 		cycler = makeCycler(page, 150, profileOptions,
-			function() return getVal() or "(无)" end,
+			function() return getVal() or NONE_OPTION end,
 			function(v)
-				setVal(v ~= "(无)" and v or nil)
+				setVal(v ~= NONE_OPTION and v or nil)
 				cycler:Refresh(tostring)
 			end)
 		cycler:SetPoint("TOPLEFT", 150, yy)
@@ -173,35 +176,35 @@ local function build(parent)
 	end
 
 	local yy = -156
-	yy = axisEnable(yy, "按内容场景", "scene")
+	yy = axisEnable(yy, L["By content scene"], "scene")
 	for _, scene in ipairs(ns.Profiles.SCENES) do
 		yy = axisRow(yy, SCENE_NAMES[scene],
 			function() return ns.db.global.autoSwitch.scene.map[scene] end,
 			function(v) ns.db.global.autoSwitch.scene.map[scene] = v end)
 	end
-	yy = axisEnable(yy, "按专精", "spec")
+	yy = axisEnable(yy, L["By specialization"], "spec")
 	if GetNumSpecializations then
 		for i = 1, GetNumSpecializations() do
 			local specID, specName = GetSpecializationInfo(i)
 			if specID then
-				yy = axisRow(yy, specName or ("专精 " .. i),
+				yy = axisRow(yy, specName or (L["Spec"] .. " " .. i),
 					function() return ns.db.global.autoSwitch.spec.map[specID] end,
 					function(v) ns.db.global.autoSwitch.spec.map[specID] = v end)
 			end
 		end
 	end
-	yy = axisEnable(yy, "按分辨率", "resolution")
+	yy = axisEnable(yy, L["By resolution"], "resolution")
 	if GetPhysicalScreenSize then
 		local w, h = GetPhysicalScreenSize()
 		local resKey = string.format("%dx%d", w, h)
-		yy = axisRow(yy, "当前 " .. resKey,
+		yy = axisRow(yy, string.format(L["Current %s"], resKey),
 			function() return ns.db.global.autoSwitch.resolution.map[resKey] end,
 			function(v) ns.db.global.autoSwitch.resolution.map[resKey] = v end)
 	end
 
 	local leaveLabel = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	leaveLabel:SetPoint("TOPLEFT", 0, yy - 8)
-	leaveLabel:SetText("离开上下文时")
+	leaveLabel:SetText(L["When leaving a context"])
 	local leaveCycler
 	leaveCycler = makeCycler(page, 110,
 		function() return LEAVE_MODES end,
@@ -220,7 +223,7 @@ local function build(parent)
 	local exportBtn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
 	exportBtn:SetSize(100, 22)
 	exportBtn:SetPoint("TOPLEFT", 0, yy)
-	exportBtn:SetText("导出分享串")
+	exportBtn:SetText(L["Export string"])
 	exportBtn:SetScript("OnClick", function()
 		StaticPopup_Show("SETTINGSHUB_COPY", nil, nil, ns.Profiles:Export())
 	end)
@@ -232,25 +235,25 @@ local function build(parent)
 	local importBtn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
 	importBtn:SetSize(110, 22)
 	importBtn:SetPoint("LEFT", importBox, "RIGHT", 8, 0)
-	importBtn:SetText("预览并导入")
+	importBtn:SetText(L["Preview & import"])
 	importBtn:SetScript("OnClick", function()
 		local payload, err = ns.Profiles:Decode(importBox:GetText())
 		if not payload then
-			ns.Print("导入串无效:" .. tostring(err))
+			ns.Print(L["Invalid import string: "] .. tostring(err))
 			return
 		end
 		local changes, bulk, unknown = ns.Profiles:DiffAgainstCurrent(payload)
 		for i, c in ipairs(changes) do
 			if i <= 30 then
-				ns.Print(string.format("  %s: %s 改为 %s", c.key, c.old, c.new))
+				ns.Print(string.format(L["  %s: %s changed to %s"], c.key, c.old, c.new))
 			end
 		end
-		if #changes > 30 then ns.Print(string.format("  ……共 %d 项,余下略", #changes)) end
+		if #changes > 30 then ns.Print(string.format(L["  ...%d in total, rest omitted"], #changes)) end
 		local summary = string.format(
-			"导入 [%s](%s):%d 项逐条改动(明细见聊天框)%s%s。应用?",
+			L["Import [%s] (%s): %d per-value changes (details in chat)%s%s. Apply?"],
 			tostring(payload.name), tostring(payload.game), #changes,
-			#bulk > 0 and (",整域替换: " .. table.concat(bulk, "/")) or "",
-			unknown > 0 and (string.format(",%d 项本客户端不识别将跳过", unknown)) or "")
+			#bulk > 0 and (L[", full-domain replace: "] .. table.concat(bulk, "/")) or "",
+			unknown > 0 and (string.format(L[", %d unknown on this client will be skipped"], unknown)) or "")
 		StaticPopup_Show("SETTINGSHUB_IMPORT_CONFIRM", summary, nil, payload)
 	end)
 
@@ -261,4 +264,4 @@ local function build(parent)
 	return page
 end
 
-ns.UI:RegisterPage("profile", "Profile 与迁移", build)
+ns.UI:RegisterPage("profile", L["Profiles & Migration"], build)

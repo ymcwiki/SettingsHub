@@ -6,7 +6,7 @@ ns.Engine = M
 local RING_SIZE = 500
 -- 这些来源的成功写入会记入期望态,登录重放据此工作;
 -- replay/test/undo/reset/uninstall 不记,undo 与 reset 对期望态有各自的显式语义
-local DESIRED_SOURCES = { user = true, import = true, ["profile"] = true }
+local DESIRED_SOURCES = { user = true, import = true, ["profile"] = true, snapshot = true }
 -- 有期望态语义的域及其在 profile 里的桶名(mutesound 的列表由适配器自维护,不走这里)
 local DESIRED_DOMAINS = { cvar = "cvar", consoleexec = "consoleexec" }
 
@@ -128,12 +128,12 @@ function M:UndoLast()
 		if not e.undone and not e.failed and e.source ~= "undo" then
 			local r = self:Undo(e)
 			if r == "applied" then
-				ns.Print(string.format("已撤销 %s,恢复为 %s", e.key, tostring(e.old)))
+				ns.Print(string.format(ns.L["Undid %s, restored to %s"], e.key, tostring(e.old)))
 			end
 			return r
 		end
 	end
-	ns.Print("没有可撤销的写入")
+	ns.Print(ns.L["Nothing to undo"])
 	return "failed", "nothing-to-undo"
 end
 

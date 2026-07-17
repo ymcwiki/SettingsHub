@@ -97,6 +97,8 @@ end
 
 _G.SlashCmdList = {}
 _G.GetBuildInfo = function() return "12.1.0", "58000", "Jan 1 2026", 120100 end
+_G.GetLocale = function() return stub.state.locale or "zhCN" end
+_G.date = os.date
 
 -- P5 非 CVar 域桩
 stub.consoleLog = {}

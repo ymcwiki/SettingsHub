@@ -25,7 +25,7 @@ function M:Flush()
 		end
 	end
 	if n > 0 then
-		ns.Print(string.format("脱战,已应用 %d 项排队的写入", n))
+		ns.Print(string.format(ns.L["Combat ended, applied %d queued writes"], n))
 	end
 end
 

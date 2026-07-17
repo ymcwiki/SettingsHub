@@ -23,12 +23,12 @@ end
 function M:CaptureDomain(domain)
 	local snap = ns.Adapters[domain]:Serialize()
 	if snap == nil then
-		ns.Print(domain .. " 当前无可捕获内容")
+		ns.Print(string.format(ns.L["%s has nothing to capture right now"], domain))
 		return
 	end
 	ns.db.profile[domain] = snap
 	ns.db.profile.domains[domain] = true
-	ns.Print(string.format("%s 域当前状态已捕获进 profile [%s]", domain, self:Current()))
+	ns.Print(string.format(ns.L["%s domain captured into profile [%s]"], domain, self:Current()))
 end
 
 function M:Pin(domain, key)
@@ -36,7 +36,7 @@ function M:Pin(domain, key)
 	local v = ns.Adapters.cvar:Read(key)
 	if v ~= nil then
 		ns.db.profile.cvar[key] = v
-		ns.Print(string.format("%s = %s 已记入 profile [%s]", key, v, self:Current()))
+		ns.Print(string.format(ns.L["%s = %s pinned to profile [%s]"], key, v, self:Current()))
 	end
 end
 
@@ -86,7 +86,7 @@ function M:Switch(name, reason, isContext)
 	ns.Adapters.mutesound:ReplayAll()
 
 	self:ApplyActive(label)
-	ns.Print(string.format("已切换到 profile [%s]%s", name, reason and ("(" .. reason .. ")") or ""))
+	ns.Print(string.format(ns.L["Switched to profile [%s]%s"], name, reason and ("(" .. reason .. ")") or ""))
 	if ns.UI then ns.UI:Refresh() end
 end
 
@@ -98,31 +98,31 @@ function M:EvaluateContext()
 	if cfg.scene.enabled then
 		local _, itype = IsInInstance()
 		local key = (itype == nil or itype == "none") and "world" or itype
-		if cfg.scene.map[key] then target, axis = cfg.scene.map[key], "场景:" .. key end
+		if cfg.scene.map[key] then target, axis = cfg.scene.map[key], ns.L["scene: "] .. key end
 	end
 	if not target and cfg.spec.enabled and GetSpecialization then
 		local specIndex = GetSpecialization()
 		local specID = specIndex and GetSpecializationInfo(specIndex)
-		if specID and cfg.spec.map[specID] then target, axis = cfg.spec.map[specID], "专精" end
+		if specID and cfg.spec.map[specID] then target, axis = cfg.spec.map[specID], ns.L["spec"] end
 	end
 	if not target and cfg.resolution.enabled and GetPhysicalScreenSize then
 		local w, h = GetPhysicalScreenSize()
 		local key = string.format("%dx%d", w, h)
-		if cfg.resolution.map[key] then target, axis = cfg.resolution.map[key], "分辨率:" .. key end
+		if cfg.resolution.map[key] then target, axis = cfg.resolution.map[key], ns.L["resolution: "] .. key end
 	end
 
 	if target then
 		self.contextAxis = axis
-		self:Switch(target, "自动切换,来源 " .. axis, true)
+		self:Switch(target, ns.L["auto-switch by "] .. axis, true)
 	elseif self.contextAxis then
 		self.contextAxis = nil
 		local base = ns.db.char.baseProfile or "Default"
 		if ns.db:GetCurrentProfile() ~= base then
 			local mode = cfg.onLeave
 			if mode == "keep" then
-				ns.Print(string.format("已离开自动切换上下文,按配置保留当前 profile [%s]", self:Current()))
+				ns.Print(string.format(ns.L["Left the auto-switch context, keeping profile [%s] as configured"], self:Current()))
 			elseif mode == "restore" or not StaticPopup_Show then
-				self:Switch(base, "上下文退出,自动回落", true)
+				self:Switch(base, ns.L["context left, falling back"], true)
 			else
 				-- 默认提示而非静默(Hyperframe 教训)
 				StaticPopup_Show("SETTINGSHUB_PROFILE_LEAVE", base, nil, base)
@@ -152,15 +152,15 @@ end
 function M:Decode(str)
 	str = tostring(str or ""):gsub("%s+", "")
 	local body = str:match("^!SH1!(.+)$")
-	if not body then return nil, "缺 " .. MAGIC .. " 头,不是本插件的导出串" end
+	if not body then return nil, string.format(ns.L["missing %s header, not an export string from this addon"], MAGIC) end
 	local LibSerialize = LibStub("LibSerialize")
 	local LibDeflate = LibStub("LibDeflate")
 	local compressed = LibDeflate:DecodeForPrint(body)
-	if not compressed then return nil, "解码失败" end
+	if not compressed then return nil, ns.L["decode failed"] end
 	local serialized = LibDeflate:DecompressDeflate(compressed)
-	if not serialized then return nil, "解压失败" end
+	if not serialized then return nil, ns.L["decompress failed"] end
 	local ok, payload = LibSerialize:Deserialize(serialized)
-	if not ok or type(payload) ~= "table" or payload.v ~= 1 then return nil, "反序列化失败或版本不符" end
+	if not ok or type(payload) ~= "table" or payload.v ~= 1 then return nil, ns.L["deserialize failed or version mismatch"] end
 	return payload
 end
 
@@ -207,6 +207,6 @@ function M:ApplyImport(payload)
 			ns.Adapters[d]:Restore(payload.data[d])
 		end
 	end
-	ns.Print(string.format("导入完成:%d 项应用,%d 项失败(失败项见日志页)", applied, failed))
+	ns.Print(string.format(ns.L["Import done: %d applied, %d failed (see the Log page for failures)"], applied, failed))
 	if ns.UI then ns.UI:Refresh() end
 end
