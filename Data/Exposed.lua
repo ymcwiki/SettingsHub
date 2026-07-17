@@ -1,4 +1,4 @@
--- 由 scripts/census2lua.py 生成于 2026-07-16:官方设置 UI 触及的 CVar 集(tag:hidden 取反用)
+-- 由 scripts/census2lua.py 生成于 2026-07-17:官方设置 UI 触及的 CVar 集(tag:hidden 取反用)
 local ADDON, ns = ...
 
 ns.Data = ns.Data or {}

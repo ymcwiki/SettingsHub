@@ -72,6 +72,10 @@ def main():
     for letter, slug, prefix, title, _ in THEMES:
         names = assigned.get(letter, [])
         total += len(names)
+        out = ROOT / "Data" / f"Curated_{letter}_{slug}.lua"
+        if out.exists() and "人工策展定版" in out.read_text():
+            print(f"{letter} {title}: 跳过,{out.name} 是 P4 人工定版(要重建先手动删除)")
+            continue
         lines = [
             f"-- 由 scripts/census2lua.py 生成于 {date.today().isoformat()},来源 cvar-census 12.1.0 差集",
             "-- text.zh 为空的条目在 P4 阶段人工填写;运行时 default/scope/secure 以实机 GetCVarInfo 为准",

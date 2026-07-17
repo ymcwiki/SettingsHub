@@ -1,2 +1,3 @@
 dist/
 dumps/
+.venv/
