@@ -236,7 +236,8 @@ function builders.composite(parent, control)
 	f.children = {}
 	local y = -26
 	for _, child in ipairs(control.children or {}) do
-		if not child.verify then
+		local missing = child.domain == "cvar" and child.key and not ns.Enum:Get(child.key)
+		if not child.verify and not missing then
 			local cw = W.Create(f, child)
 			if cw then
 				cw:SetPoint("TOPLEFT", 16, y)

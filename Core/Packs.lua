@@ -28,10 +28,13 @@ function M:Apply(pack)
 	ns.Engine:LogBulk("cvar", snap, "pack:" .. pack.key)
 	local applied, queued, failed = 0, 0, 0
 	for _, item in ipairs(pack.values) do
-		local r = ns.Engine:Set("cvar", item.key, item.value, "pack")
-		if r == "applied" then applied = applied + 1
-		elseif r == "queued" then queued = queued + 1
-		else failed = failed + 1 end
+		-- 本客户端不存在的键(旧版本)预览时已声明跳过,这里不写、不计失败
+		if snap[item.key] ~= nil then
+			local r = ns.Engine:Set("cvar", item.key, item.value, "pack")
+			if r == "applied" then applied = applied + 1
+			elseif r == "queued" then queued = queued + 1
+			else failed = failed + 1 end
+		end
 	end
 	return applied, queued, failed
 end

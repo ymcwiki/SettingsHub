@@ -13,10 +13,13 @@ local function buildThemePage(theme)
 		scroll:SetScrollChild(content)
 
 		page.widgets = {}
-		local y, hiddenCount = 0, 0
+		local y, hiddenCount, missingCount = 0, 0, 0
 		for _, control in ipairs(theme.controls) do
 			if control.verify then
 				hiddenCount = hiddenCount + 1
+			elseif control.domain == "cvar" and control.key and not ns.Enum:Get(control.key) then
+				-- 策展基准是 12.1.0,旧客户端(如 12.0.7)不存在的项直接隐藏
+				missingCount = missingCount + 1
 			else
 				local w = ns.Widgets.Create(content, control)
 				if w then
@@ -95,9 +98,14 @@ local function buildThemePage(theme)
 
 		local footer = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 		footer:SetPoint("BOTTOMLEFT", 4, 8)
+		local notes = {}
 		if hiddenCount > 0 then
-			footer:SetFormattedText(L["%d more entries hidden until verified in game (TODO:VERIFY)"], hiddenCount)
+			notes[#notes + 1] = string.format(L["%d more entries hidden until verified in game (TODO:VERIFY)"], hiddenCount)
 		end
+		if missingCount > 0 then
+			notes[#notes + 1] = string.format(L["%d entries not present on this client version, hidden"], missingCount)
+		end
+		footer:SetText(table.concat(notes, "  "))
 
 		page.reloadBtn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
 		page.reloadBtn:SetSize(120, 22)

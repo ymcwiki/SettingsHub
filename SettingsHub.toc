@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120007, 120100
 ## Title: SettingsHub
 ## Notes: Search, understand, manage and migrate every game setting, exposed or hidden.
 ## Notes-zhCN: 游戏内设置中心:官方界面有和没有的设置,都在这里发现、理解、管理、迁移。

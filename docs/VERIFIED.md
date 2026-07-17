@@ -21,6 +21,8 @@ InCombatLockdown 时拒绝并入队。
 状态:UNVERIFIED(批量)。census 里 A/D/G 主题多处 help 错位,文案已按领域知识改写;
 默认值以运行时 GetCVarInfo 为准(L0 权威),种子仅展示用。
 验证方法:游戏内跑 /sh dump,用 scripts/dump_diff.py 对照 Data/ 与 census JSON,差异回写。
+2026-07-17 增补:12.0.7 实机上 miniWorldMap / showDungeonEntrancesOnMap / showDelveEntrancesOnMap
+的 scope 为 character,12.1.0 census 记为 account;先按版本差异对待,12.1 上线后 dump 复核。
 
 ## 4. 战斗保护 CVar 集合(替代 AIO 手工 65 条表)
 

@@ -107,6 +107,7 @@ L["Unmute now"] = "临时解除"
 L["Remove"] = "移除"
 L["%d unmuted for this session, mutes again next login"] = "%d 本次会话解除静音,下次登录恢复"
 L["%d more entries hidden until verified in game (TODO:VERIFY)"] = "另有 %d 项待实机验证(TODO:VERIFY)后开放"
+L["%d entries not present on this client version, hidden"] = "%d 项当前客户端版本不存在,已隐藏"
 L["Reload UI to apply"] = "重载界面生效"
 
 -- Profile 页

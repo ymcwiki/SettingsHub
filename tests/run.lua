@@ -524,6 +524,14 @@ t("推荐包:整包撤销回环", r == "applied" and C_CVar.GetCVar("nameplateSh
 for _, item in ipairs(pvpPack.values) do
 	ns.db.profile.cvar[item.key] = nil
 end
+-- 旧客户端(12.0.7 类)没有的键:预览计 unknown,应用直接跳过不计失败
+do
+	local fake = { key = "fake", values = { { key = "noSuchCvarOnThisClient", value = "1" } } }
+	local ch, unknown = ns.Packs:Preview(fake)
+	local fa, fq, ff = ns.Packs:Apply(fake)
+	t("推荐包:不存在的键预览计 unknown、应用跳过", #ch == 0 and unknown == 1
+		and fa == 0 and fq == 0 and ff == 0)
+end
 
 -- v0.3 拼音搜索:字表就位,全拼与首字母缩写命中策展项
 t("拼音:字表就位", ns.Data.pinyin and ns.Data.pinyin["姓"] == "xing")
