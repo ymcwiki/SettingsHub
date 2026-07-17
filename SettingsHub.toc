@@ -6,6 +6,7 @@
 ## Version: @project-version@
 ## SavedVariables: SettingsHubDB
 ## AddonCompartmentFunc: SettingsHub_OnAddonCompartmentClick
+## IconTexture: Interface\AddOns\SettingsHub\Media\icon.png
 ## X-Curse-Project-ID:
 ## X-Wago-ID:
 ## X-WoWI-ID:
