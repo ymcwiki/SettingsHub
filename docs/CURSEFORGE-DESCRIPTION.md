@@ -1,7 +1,7 @@
 # CurseForge 项目页描述(粘贴用)
 
 首次建项目或改版时,把下面内容贴进项目页 Description(编辑器支持 markdown 粘贴后调格式)。
-GitHub 仓库建好后把两处 `(GitHub link)` 换成真实地址。
+GitHub 仓库建好后把两处 `https://github.com/ymcwiki/SettingsHub` 换成真实地址。
 
 ---
 
@@ -61,8 +61,8 @@ Key bindings and modified clicks, macros (imported by name, slot drift reported)
 
 - Zero-taint by design: CVar access goes through C_CVar only, and the default Settings panel is only touched through the official registration API
 - Curated explanations and UI text are currently in Simplified Chinese; setting names, search keywords and everything data-driven work in English
-- Bug reports and requests: (GitHub link) or the comments below
+- Bug reports and requests: https://github.com/ymcwiki/SettingsHub or the comments below
 
 ---
 
-**简体中文**:SettingsHub 是 Midnight (12.1+) 的游戏内设置中心。全量 CVar 浏览器加八个中文白话说明的主题面板,官方界面没放出来的隐藏设置也在内;每一次写入先记日志,单条可撤销、可整体还原、卸载可回滚;键位、宏、EditMode 布局、点击施法、静音列表、TTS 一并纳入 profile,支持按副本类型/专精/分辨率/角色四轴自动切换,导入导出带 diff 预览。反馈请到 (GitHub link) 或下方评论。
+**简体中文**:SettingsHub 是 Midnight (12.1+) 的游戏内设置中心。全量 CVar 浏览器加八个中文白话说明的主题面板,官方界面没放出来的隐藏设置也在内;每一次写入先记日志,单条可撤销、可整体还原、卸载可回滚;键位、宏、EditMode 布局、点击施法、静音列表、TTS 一并纳入 profile,支持按副本类型/专精/分辨率/角色四轴自动切换,导入导出带 diff 预览。反馈请到 https://github.com/ymcwiki/SettingsHub 或下方评论。
