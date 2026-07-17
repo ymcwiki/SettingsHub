@@ -409,6 +409,20 @@ t("SelfTest phase B:全部断言通过", ok)
 t("SelfTest phase B:标记清除且值复原", ns.db.global.selftest == nil
 	and C_CVar.GetCVar(markerKey) == markerOld)
 
+-- 12.0.7 兼容:AreCVarsLoaded 不存在时枚举照常;存在且返回 false 时才拒绝
+do
+	local saved = C_CVar.AreCVarsLoaded
+	C_CVar.AreCVarsLoaded = nil
+	local ok2, n2 = ns.Enum:Refresh()
+	t("枚举:无 AreCVarsLoaded API(12.0.7)照常枚举", ok2 == true and n2 == CVAR_TOTAL, tostring(n2))
+	C_CVar.AreCVarsLoaded = saved
+	stub.state.cvarsLoaded = false
+	local ok3, why = ns.Enum:Refresh()
+	t("枚举:API 报未加载时拒绝", ok3 == false and why == "cvars-not-loaded", tostring(why))
+	stub.state.cvarsLoaded = true
+	ns.Enum:Refresh()
+end
+
 -- diag:管线回环 OK、扫描零拒绝(桩里大量策展键不存在,missing 属预期)
 do
 	local dlines = ns.SelfTest:Diag()

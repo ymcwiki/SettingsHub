@@ -198,6 +198,16 @@ function M:Diag()
 		ns.db and "ok" or "NIL", ns.Enum.count or -1,
 		tostring(ns.UI and ns.UI.combatLocked), tostring(InCombatLockdown()),
 		tostring(C_CVar.GetCVar("scriptErrors")))
+	-- 枚举链路逐层:API 存在性、原始命令数、匹配的 Cvar 型条数
+	local rawCmds = ConsoleGetAllCommands and ConsoleGetAllCommands() or nil
+	local cvarType = Enum.ConsoleCommandType and Enum.ConsoleCommandType.Cvar or 0
+	local matched = 0
+	for i = 1, rawCmds and #rawCmds or 0 do
+		if rawCmds[i].commandType == cvarType then matched = matched + 1 end
+	end
+	add("enumChain: AreCVarsLoaded=%s  rawCommands=%s  cvarTypeMatched=%d",
+		C_CVar.AreCVarsLoaded and tostring(C_CVar.AreCVarsLoaded()) or "MISSING",
+		rawCmds and tostring(#rawCmds) or "NO-API", matched)
 
 	-- 写管线回环:与勾选框同一条链路(少了鼠标事件层),错误全文捕获
 	local okPipe, errPipe = pcall(function()
@@ -253,6 +263,25 @@ function M:Diag()
 	showDiag(text)
 	ns.Print(ns.L["Diag done: screenshot the window and send it back"])
 	return lines
+end
+
+-- /sh probe:打印鼠标当前悬停的框架链,查「点击被谁挡住」;
+-- 用法:鼠标悬停在问题控件上,聊天框输入 /sh probe 回车(打字期间鼠标别动)
+function M:Probe()
+	local foci
+	if GetMouseFoci then
+		foci = GetMouseFoci()
+	elseif GetMouseFocus then
+		foci = { GetMouseFocus() }
+	else
+		ns.Print("no mouse focus API")
+		return
+	end
+	local names = {}
+	for _, f in ipairs(foci or {}) do
+		names[#names + 1] = f.GetDebugName and f:GetDebugName() or tostring(f)
+	end
+	ns.Print("mouse over: " .. (#names > 0 and table.concat(names, "  >  ") or "(none)"))
 end
 
 -- P7 元数据管线入口:全量落盘供仓库脚本 diff

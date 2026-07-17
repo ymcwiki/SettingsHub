@@ -19,7 +19,9 @@ end
 
 -- 登录早期枚举不全是 AIO #126 根因之一:每次打开面板都要重新调用本函数回灌
 function M:Refresh()
-	if not (C_CVar.AreCVarsLoaded and C_CVar.AreCVarsLoaded()) then
+	-- AreCVarsLoaded 是 12.1 API,12.0.7 上不存在;API 缺失不能当「未加载」处理,
+	-- 否则枚举永远为 0(v0.3.3 实机 diag 抓到的 bug)
+	if C_CVar.AreCVarsLoaded and not C_CVar.AreCVarsLoaded() then
 		return false, "cvars-not-loaded"
 	end
 	local cmds = ConsoleGetAllCommands()
