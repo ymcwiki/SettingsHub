@@ -409,6 +409,18 @@ t("SelfTest phase B:全部断言通过", ok)
 t("SelfTest phase B:标记清除且值复原", ns.db.global.selftest == nil
 	and C_CVar.GetCVar(markerKey) == markerOld)
 
+-- diag:管线回环 OK、扫描零拒绝(桩里大量策展键不存在,missing 属预期)
+do
+	local dlines = ns.SelfTest:Diag()
+	local pipeOK, sweepLine = false, nil
+	for _, l in ipairs(dlines) do
+		if l:find("pipeline=OK", 1, true) then pipeOK = true end
+		if l:find("sweep:", 1, true) then sweepLine = l end
+	end
+	t("diag:管线回环 OK", pipeOK, dlines[3])
+	t("diag:扫描零拒绝", sweepLine and sweepLine:find("rejected=0", 1, true) ~= nil, sweepLine)
+end
+
 -- dump
 ns.SelfTest:Dump()
 t("dump:计数一致", ns.db.global.dump and ns.db.global.dump.count == CVAR_TOTAL)

@@ -77,16 +77,18 @@ SlashCmdList.SETTINGSHUB = function(msg)
 		ns.SelfTest:Run()
 	elseif msg == "dump" then
 		ns.SelfTest:Dump()
+	elseif msg == "diag" then
+		ns.SelfTest:Diag()
 	elseif msg == "undo" then
 		ns.Engine:UndoLast()
 	elseif msg == "" then
 		if ns.UI then
 			ns.UI:Toggle()
 		else
-			ns.Print(ns.L["Commands: /sh test | /sh dump | /sh undo"])
+			ns.Print(ns.L["Commands: /sh test | /sh dump | /sh undo | /sh diag"])
 		end
 	else
-		ns.Print(ns.L["Usage: /sh [test|dump|undo]"])
+		ns.Print(ns.L["Usage: /sh [test|dump|undo|diag]"])
 	end
 end
 

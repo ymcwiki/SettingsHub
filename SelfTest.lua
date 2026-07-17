@@ -136,6 +136,125 @@ function M:Run()
 	return report()
 end
 
+-- /sh diag:一条命令收全诊断证据,弹窗展示,一张截图带走
+-- 内容:环境状态、写管线回环(pcall 捕获错误文本)、全策展项可写性扫描(写回当前值,零副作用)
+local diagFrame
+
+local function showDiag(text)
+	-- 无头测试环境没有 UIParent,只打印
+	if not UIParent then
+		print(text)
+		return
+	end
+	if not diagFrame then
+		diagFrame = CreateFrame("Frame", "SettingsHubDiagFrame", UIParent, "BackdropTemplate")
+		diagFrame:SetSize(720, 420)
+		diagFrame:SetPoint("CENTER")
+		diagFrame:SetBackdrop({
+			bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+			edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+			tile = true, tileSize = 32, edgeSize = 32,
+			insets = { left = 8, right = 8, top = 8, bottom = 8 },
+		})
+		diagFrame:SetMovable(true)
+		diagFrame:EnableMouse(true)
+		diagFrame:RegisterForDrag("LeftButton")
+		diagFrame:SetScript("OnDragStart", diagFrame.StartMoving)
+		diagFrame:SetScript("OnDragStop", diagFrame.StopMovingOrSizing)
+		diagFrame:SetFrameStrata("DIALOG")
+		tinsert(UISpecialFrames, "SettingsHubDiagFrame")
+		local close = CreateFrame("Button", nil, diagFrame, "UIPanelCloseButton")
+		close:SetPoint("TOPRIGHT", -6, -6)
+		local sf = CreateFrame("ScrollFrame", nil, diagFrame, "UIPanelScrollFrameTemplate")
+		sf:SetPoint("TOPLEFT", 14, -32)
+		sf:SetPoint("BOTTOMRIGHT", -32, 14)
+		local eb = CreateFrame("EditBox", nil, sf)
+		eb:SetMultiLine(true)
+		eb:SetFontObject(ChatFontNormal)
+		eb:SetWidth(660)
+		eb:SetAutoFocus(false)
+		eb:SetScript("OnEscapePressed", function() diagFrame:Hide() end)
+		eb:SetScript("OnTextChanged", function(self) self:SetText(self.diagText or "") end)
+		sf:SetScrollChild(eb)
+		diagFrame.editBox = eb
+	end
+	diagFrame.editBox.diagText = text
+	diagFrame.editBox:SetText(text)
+	diagFrame:Show()
+end
+
+function M:Diag()
+	local lines = {}
+	local function add(fmt, ...)
+		lines[#lines + 1] = string.format(fmt, ...)
+	end
+	local ver, build = GetBuildInfo()
+	local addonVer = "?"
+	if C_AddOns and C_AddOns.GetAddOnMetadata then
+		addonVer = C_AddOns.GetAddOnMetadata(ADDON, "Version") or "?"
+	end
+	add("SettingsHub diag  client=%s(%s)  addon=%s  locale=%s", tostring(ver), tostring(build), addonVer, tostring(GetLocale()))
+	add("db=%s  enum=%d  combatLock=%s  inCombat=%s  scriptErrors=%s",
+		ns.db and "ok" or "NIL", ns.Enum.count or -1,
+		tostring(ns.UI and ns.UI.combatLocked), tostring(InCombatLockdown()),
+		tostring(C_CVar.GetCVar("scriptErrors")))
+
+	-- 写管线回环:与勾选框同一条链路(少了鼠标事件层),错误全文捕获
+	local okPipe, errPipe = pcall(function()
+		local key = "cameraZoomSpeed"
+		local old = ns.Adapters.cvar:Read(key)
+		assert(old ~= nil, "cameraZoomSpeed unreadable")
+		local r, e = ns.Engine:Set("cvar", key, old == "20" and "21" or "20", "test")
+		assert(r == "applied", "Set=" .. tostring(r) .. " err=" .. tostring(e))
+		assert(ns.Engine:UndoLast() == "applied", "UndoLast failed")
+	end)
+	add("pipeline=%s%s", okPipe and "OK" or "ERROR", okPipe and "" or ("  " .. tostring(errPipe)))
+
+	-- 全策展项可写性扫描:把当前值原样写回,拒绝写入的记名(blame 有 _selfWriting 保护)
+	local rejected, missing, secureSkip, tested = {}, 0, 0, 0
+	local function walk(controls)
+		for _, c in ipairs(controls) do
+			if c.domain == "cvar" and c.key then
+				local cur = ns.Adapters.cvar:Read(c.key)
+				local info = ns.Enum:Get(c.key)
+				if cur == nil then
+					missing = missing + 1
+				elseif info and info.secure and InCombatLockdown() then
+					secureSkip = secureSkip + 1
+				else
+					tested = tested + 1
+					ns.Engine._selfWriting = true
+					local okw = C_CVar.SetCVar(c.key, cur)
+					ns.Engine._selfWriting = false
+					if not okw then rejected[#rejected + 1] = c.key end
+				end
+			end
+			if c.children then walk(c.children) end
+		end
+	end
+	for _, th in ipairs(ns.Data.themes or {}) do
+		walk(th.controls)
+	end
+	add("sweep: tested=%d missing=%d secureSkip=%d rejected=%d", tested, missing, secureSkip, #rejected)
+	if #rejected > 0 then
+		add("rejected: %s", table.concat(rejected, "  "))
+	end
+
+	-- 本次会话失败清单尾部
+	add("failures=%d", #ns.Engine.failures)
+	for i = math.max(1, #ns.Engine.failures - 4), #ns.Engine.failures do
+		local fl = ns.Engine.failures[i]
+		if fl then
+			add("  fail [%s] %s=%s err=%s", tostring(fl.source), tostring(fl.key), tostring(fl.value), tostring(fl.err))
+		end
+	end
+
+	local text = table.concat(lines, "\n")
+	showDiag(text)
+	ns.Print(ns.L["Diag done: screenshot the window and send it back"])
+	return lines
+end
+
 -- P7 元数据管线入口:全量落盘供仓库脚本 diff
 function M:Dump()
 	local ok, n = ns.Enum:Refresh()

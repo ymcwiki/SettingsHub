@@ -258,8 +258,9 @@ L["Login replay: %d console commands, %d muted sounds"] = "登录重放:console 
 L["World-enter assert: %d values were overwritten externally, restored to desired state"] = "进入世界断言:%d 项被外部覆盖,已按期望态改回"
 
 -- 命令行与动作
-L["Commands: /sh test | /sh dump | /sh undo"] = "可用命令: /sh test | /sh dump | /sh undo"
-L["Usage: /sh [test|dump|undo]"] = "用法: /sh [test|dump|undo]"
+L["Commands: /sh test | /sh dump | /sh undo | /sh diag"] = "可用命令: /sh test | /sh dump | /sh undo | /sh diag"
+L["Usage: /sh [test|dump|undo|diag]"] = "用法: /sh [test|dump|undo|diag]"
+L["Diag done: screenshot the window and send it back"] = "诊断完成:窗口截图发回即可"
 L["All test_* experimental CVars reset (incl. ActionCam fine-tuning)"] = "已重置全部 test_* 实验参数(含 ActionCam 精调)"
 L["This client has no C_CVar.ResetTestCVars"] = "当前客户端没有 C_CVar.ResetTestCVars"
 L["Fishing preset applied (interaction soft-target arc/range widened); undo it as a whole from the Log page"] = "钓鱼预设已应用(互动软目标扇区/距离放宽),日志页可整体撤销"
