@@ -1,5 +1,7 @@
 # SettingsHub
 
+![SettingsHub](docs/assets/banner-1280x640.png)
+
 魔兽世界 Midnight (12.1+) 的游戏内设置中心:官方界面有和没有的设置,都在这里发现、理解、管理、迁移。
 
 接棒半失修的 AdvancedInterfaceOptions(AIO)空出的生态位。与 Leatrix Plus / EnhanceQoL 这类 QoL 套件不冲突:它们做功能,SettingsHub 做设置本身的发现、理解、管理与迁移。
