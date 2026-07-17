@@ -26,7 +26,11 @@ AdvancedInterfaceOptions has not been updated for Midnight. SettingsHub is a fro
 
 ## Curated panels
 
-Eight themed pages with plain-language explanations, sane ranges and patch annotations: Camera and ActionCam (with presets and fine tuning), soft targeting, nameplates (including the 12.1 additions), floating combat text, interface QoL, graphics (raid-specific mirrors included), sound, and a developer page that doubles as an addon-compliance test panel.
+Eleven themed pages with plain-language explanations, sane ranges and patch annotations: Camera and ActionCam (with presets and fine tuning), soft targeting, nameplates (including the 12.1 additions), floating combat text, interface QoL, graphics (raid-specific mirrors included), sound, a developer page that doubles as an addon-compliance test panel, chat, gamepad and cursor, and quests and map.
+
+## Recommended packs
+
+Four one-click bundles built from the curated set: Motion Comfort (everything that sways the camera, off), Raid Performance (in-raid quality tiers only, open world untouched), PvP Information (enemy pet/totem/guardian nameplates), and Starter Picks (the uncontroversial veteran defaults). Each apply shows a preview first and lands as a single undo-log entry, so a whole pack rolls back in one click.
 
 ## Every change can be taken back
 
@@ -55,7 +59,7 @@ Eight themed pages with plain-language explanations, sane ranges and patch annot
 
 ## Beyond CVars
 
-Key bindings and modified clicks, macros (imported by name, slot drift reported), Edit Mode layouts (uses the official share-string format), click bindings, muted sound files, text-to-speech settings, and a replay list for console-only commands like `actioncam`.
+Key bindings and modified clicks, macros (imported by name, slot drift reported), Edit Mode layouts (uses the official share-string format), click bindings, muted sound files, text-to-speech settings, chat window layouts (names, sizes, colors, message groups and channels for all ten windows), and a replay list for console-only commands like `actioncam`.
 
 ## Profiles and migration
 
@@ -72,9 +76,9 @@ Key bindings and modified clicks, macros (imported by name, slot drift reported)
 ## Notes
 
 - Zero-taint by design: CVar access goes through C_CVar only, and the default Settings panel is only touched through the official registration API
-- Localized in English and Chinese (Simplified/Traditional): the UI and all curated explanations follow your client language, and search matches both languages either way
+- Localized in English and Chinese (Simplified/Traditional): the UI and all curated explanations follow your client language, and search matches both languages either way, plus pinyin for Chinese terms (xingmingban finds the nameplate family)
 - Bug reports and requests: https://github.com/ymcwiki/SettingsHub or the comments below
 
 ---
 
-**简体中文**:SettingsHub 是 Midnight (12.1+) 的游戏内设置中心,界面与全部策展说明中英双语。全量 CVar 浏览器加八个白话说明的主题面板,官方界面没放出来的隐藏设置也在内;每一次写入先记日志,单条可撤销、可整体还原、卸载可回滚;命名快照全量备份当前设置,补丁前后对比、勾选恢复;别的插件反复覆盖你的设置会被记名点出,一键处置;键位、宏、EditMode 布局、点击施法、静音列表、TTS 一并纳入 profile,支持按副本类型/专精/分辨率/角色四轴自动切换,导入导出带 diff 预览。反馈请到 https://github.com/ymcwiki/SettingsHub 或下方评论。
+**简体中文**:SettingsHub 是 Midnight (12.1+) 的游戏内设置中心,界面与全部策展说明中英双语,搜索支持中文、英文和拼音。全量 CVar 浏览器加十一个白话说明的主题面板,官方界面没放出来的隐藏设置也在内;晕 3D 舒适、团本性能、PvP 信息、新手推荐四个一键推荐包,应用前预览、应用后整包可撤销;每一次写入先记日志,单条可撤销、可整体还原、卸载可回滚;命名快照全量备份当前设置,补丁前后对比、勾选恢复;别的插件反复覆盖你的设置会被记名点出,一键处置;键位、宏、EditMode 布局、点击施法、静音列表、TTS、聊天窗口一并纳入 profile,支持按副本类型/专精/分辨率/角色四轴自动切换,导入导出带 diff 预览。反馈请到 https://github.com/ymcwiki/SettingsHub 或下方评论。

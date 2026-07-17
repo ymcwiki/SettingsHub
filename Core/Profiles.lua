@@ -4,7 +4,7 @@ local M = { contextAxis = nil }
 ns.Profiles = M
 
 -- 批量域:profile 存 Serialize 快照,应用时整域 Restore(先 LogBulk 记撤销快照)
-local BULK_DOMAINS = { "binding", "macro", "editmode", "clickbinding", "tts" }
+local BULK_DOMAINS = { "binding", "macro", "editmode", "clickbinding", "tts", "chatwindow" }
 M.BULK_DOMAINS = BULK_DOMAINS
 M.SCENES = { "party", "raid", "arena", "pvp", "world" }
 

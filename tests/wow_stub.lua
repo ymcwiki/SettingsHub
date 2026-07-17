@@ -206,6 +206,59 @@ _G.C_TTSSettings = {
 	SetSetting = function(e, v) stub.tts.bools[e] = v end,
 }
 
+-- 聊天窗口域桩(v0.3)
+_G.NUM_CHAT_WINDOWS = 10
+stub.chatWindows = {
+	[1] = { name = "General", size = 14, r = 0, g = 0, b = 0, alpha = 0.25, shown = 1, locked = 1,
+		docked = 1, uninteractable = 0, messages = { "SAY", "YELL" }, channels = { "General" } },
+	[2] = { name = "Log", size = 12, r = 0, g = 0, b = 0, alpha = 0, shown = 0, locked = 0,
+		docked = 2, uninteractable = 0, messages = { "GUILD" }, channels = {} },
+}
+local function chatWin(i)
+	local w = stub.chatWindows[i]
+	if not w then
+		w = { name = "", size = 14, r = 0, g = 0, b = 0, alpha = 0, shown = 0, locked = 0,
+			docked = 0, uninteractable = 0, messages = {}, channels = {} }
+		stub.chatWindows[i] = w
+	end
+	return w
+end
+_G.GetChatWindowInfo = function(i)
+	local w = chatWin(i)
+	return w.name, w.size, w.r, w.g, w.b, w.alpha, w.shown == 1, w.locked == 1, w.docked, w.uninteractable == 1
+end
+_G.GetChatWindowMessages = function(i) return unpack(chatWin(i).messages) end
+_G.GetChatWindowChannels = function(i)
+	local out = {}
+	for _, ch in ipairs(chatWin(i).channels) do
+		out[#out + 1] = ch
+		out[#out + 1] = 1
+	end
+	return unpack(out)
+end
+_G.SetChatWindowName = function(i, v) chatWin(i).name = v end
+_G.SetChatWindowSize = function(i, v) chatWin(i).size = v end
+_G.SetChatWindowColor = function(i, r, g, b) local w = chatWin(i) w.r, w.g, w.b = r, g, b end
+_G.SetChatWindowAlpha = function(i, v) chatWin(i).alpha = v end
+_G.SetChatWindowShown = function(i, v) chatWin(i).shown = v and 1 or 0 end
+_G.SetChatWindowLocked = function(i, v) chatWin(i).locked = v and 1 or 0 end
+_G.SetChatWindowDocked = function(i, v) chatWin(i).docked = v end
+_G.SetChatWindowUninteractable = function(i, v) chatWin(i).uninteractable = v and 1 or 0 end
+_G.AddChatWindowMessages = function(i, g) table.insert(chatWin(i).messages, g) end
+_G.RemoveChatWindowMessages = function(i, g)
+	local m = chatWin(i).messages
+	for j, x in ipairs(m) do
+		if x == g then table.remove(m, j) break end
+	end
+end
+_G.AddChatWindowChannel = function(i, ch) table.insert(chatWin(i).channels, ch) end
+_G.RemoveChatWindowChannel = function(i, ch)
+	local m = chatWin(i).channels
+	for j, x in ipairs(m) do
+		if x == ch then table.remove(m, j) break end
+	end
+end
+
 -- 四轴上下文
 stub.state.instanceType = "none"
 _G.IsInInstance = function()

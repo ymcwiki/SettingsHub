@@ -6,7 +6,7 @@ ns.Engine = M
 local RING_SIZE = 500
 -- 这些来源的成功写入会记入期望态,登录重放据此工作;
 -- replay/test/undo/reset/uninstall 不记,undo 与 reset 对期望态有各自的显式语义
-local DESIRED_SOURCES = { user = true, import = true, ["profile"] = true, snapshot = true }
+local DESIRED_SOURCES = { user = true, import = true, ["profile"] = true, snapshot = true, pack = true }
 -- 有期望态语义的域及其在 profile 里的桶名(mutesound 的列表由适配器自维护,不走这里)
 local DESIRED_DOMAINS = { cvar = "cvar", consoleexec = "consoleexec" }
 

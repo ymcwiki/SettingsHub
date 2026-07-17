@@ -42,7 +42,7 @@ end
 local SOURCE_NAMES = {
 	user = L["manual"], import = L["import"], replay = L["replay"], undo = L["undo"],
 	reset = L["reset"], uninstall = L["uninstall"], restore = L["restore"], test = L["selftest"],
-	profile = L["profile"], snapshot = L["snapshot"],
+	profile = L["profile"], snapshot = L["snapshot"], pack = L["pack"],
 }
 
 local function buildRow(row)

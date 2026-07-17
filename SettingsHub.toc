@@ -32,12 +32,14 @@ Adapters\ClickBinding.lua
 Adapters\MuteSound.lua
 Adapters\TTS.lua
 Adapters\ConsoleExec.lua
+Adapters\ChatWindow.lua
 Core\Engine.lua
 Core\Conflicts.lua
 Core\Replay.lua
 Core\Actions.lua
 Core\Profiles.lua
 Core\Snapshots.lua
+Core\Packs.lua
 
 Data\Curated_A_Camera.lua
 Data\Curated_B_SoftTarget.lua
@@ -47,6 +49,11 @@ Data\Curated_E_QoL.lua
 Data\Curated_F_Graphics.lua
 Data\Curated_G_Sound.lua
 Data\Curated_H_Dev.lua
+Data\Curated_I_Chat.lua
+Data\Curated_J_Input.lua
+Data\Curated_K_QuestMap.lua
+Data\Packs.lua
+Data\Pinyin.lua
 Data\Exposed.lua
 
 UI\Search.lua
@@ -54,6 +61,7 @@ UI\MainFrame.lua
 UI\Browser.lua
 UI\Widgets.lua
 UI\ThemePage.lua
+UI\PackPage.lua
 UI\ProfilePage.lua
 UI\SnapshotPage.lua
 UI\LogPage.lua

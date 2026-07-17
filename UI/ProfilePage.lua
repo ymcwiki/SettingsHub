@@ -4,8 +4,9 @@ local L = ns.L
 local DOMAIN_NAMES = {
 	cvar = "CVar", binding = L["Keybinds"], macro = L["Macros"], editmode = "EditMode",
 	clickbinding = L["Click casting"], mutesound = L["Mute list"], tts = "TTS", consoleexec = L["Console commands"],
+	chatwindow = L["Chat windows"],
 }
-local DOMAIN_ORDER = { "cvar", "binding", "macro", "editmode", "clickbinding", "mutesound", "tts", "consoleexec" }
+local DOMAIN_ORDER = { "cvar", "binding", "macro", "editmode", "clickbinding", "mutesound", "tts", "consoleexec", "chatwindow" }
 local SCENE_NAMES = { party = L["Dungeon"], raid = L["Raid"], arena = L["Arena"], pvp = L["Battleground"], world = L["Open world"] }
 local LEAVE_MODES = { "prompt", "restore", "keep" }
 local LEAVE_NAMES = { prompt = L["Ask me"], restore = L["Auto fall back"], keep = L["Keep as is"] }
@@ -131,7 +132,7 @@ local function build(parent)
 	end)
 	local capHint = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	capHint:SetPoint("LEFT", capBtn, "RIGHT", 8, 0)
-	capHint:SetText(L["Keybinds/macros/EditMode/click casting/TTS are snapshots: re-capture after changing them"])
+	capHint:SetText(L["Keybinds/macros/EditMode/click casting/TTS/chat windows are snapshots: re-capture after changing them"])
 
 	-- 四轴自动切换
 	local axisHeader = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")

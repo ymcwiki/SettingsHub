@@ -8,17 +8,20 @@ local FILES = {
 	"Core/Bootstrap.lua", "Core/Enum.lua", "Core/CombatQueue.lua", "Core/Blame.lua",
 	"Adapters/Cvar.lua", "Adapters/Binding.lua", "Adapters/Macro.lua", "Adapters/EditMode.lua",
 	"Adapters/ClickBinding.lua", "Adapters/MuteSound.lua", "Adapters/TTS.lua", "Adapters/ConsoleExec.lua",
+	"Adapters/ChatWindow.lua",
 	"Core/Engine.lua", "Core/Conflicts.lua", "Core/Replay.lua", "Core/Actions.lua", "Core/Profiles.lua",
-	"Core/Snapshots.lua",
+	"Core/Snapshots.lua", "Core/Packs.lua",
 	"Data/Curated_A_Camera.lua", "Data/Curated_B_SoftTarget.lua", "Data/Curated_C_Nameplate.lua",
 	"Data/Curated_D_CombatText.lua", "Data/Curated_E_QoL.lua", "Data/Curated_F_Graphics.lua",
-	"Data/Curated_G_Sound.lua", "Data/Curated_H_Dev.lua", "Data/Exposed.lua",
+	"Data/Curated_G_Sound.lua", "Data/Curated_H_Dev.lua", "Data/Curated_I_Chat.lua",
+	"Data/Curated_J_Input.lua", "Data/Curated_K_QuestMap.lua",
+	"Data/Packs.lua", "Data/Pinyin.lua", "Data/Exposed.lua",
 	"UI/Search.lua",
 	"SelfTest.lua",
 }
 -- 纯 UI 文件无法在桩里执行,只做编译级语法检查
 local SYNTAX_ONLY = {
-	"UI/MainFrame.lua", "UI/Browser.lua", "UI/Widgets.lua", "UI/ThemePage.lua",
+	"UI/MainFrame.lua", "UI/Browser.lua", "UI/Widgets.lua", "UI/ThemePage.lua", "UI/PackPage.lua",
 	"UI/ProfilePage.lua", "UI/SnapshotPage.lua", "UI/LogPage.lua", "Integration/OfficialSettings.lua",
 }
 for _, f in ipairs(FILES) do
@@ -34,8 +37,21 @@ stub.addCvar("lockedCvar", { value = "5", default = "5", readonly = true })
 stub.addCvar("alwaysCompareItems", { value = "0", default = "0", sAcc = true })
 stub.addCvar("autoLootDefault", { value = "0", default = "0", sChar = true })
 stub.addCvar("reloadui", { commandType = 1 })
+-- v0.3 推荐包引用的策展键(应用测试要真实写入)
+for _, name in ipairs({
+	"AdvFlyingDynamicFOVEnabled", "DriveDynamicFOVEnabled", "test_cameraDynamicPitch",
+	"test_cameraHeadMovementStrength", "ffxNether", "RAIDweatherDensity", "RAIDshadowMode",
+	"RAIDparticleDensity", "RAIDfarclip", "nameplateShowEnemyPets", "nameplateShowEnemyTotems",
+	"nameplateShowEnemyGuardians", "cameraDistanceMaxZoomFactor", "threatShowNumeric",
+	"breakUpLargeNumbers", "missingTransmogSourceInItemTooltips",
+}) do
+	stub.addCvar(name, { value = "0", default = "0" })
+end
 for i = 1, 1650 do stub.addCvar("dummyCvar" .. i, { value = "0", default = "0" }) end
-local CVAR_TOTAL = 1656
+local CVAR_TOTAL = 0
+for _, e in pairs(stub.registry) do
+	if e.commandType == 0 then CVAR_TOTAL = CVAR_TOTAL + 1 end
+end
 
 local fails = 0
 local function t(name, cond, detail)
@@ -84,11 +100,11 @@ do
 		end
 	end
 	for _, th in ipairs(ns.Data.themes) do walk(th.controls) end
-	t("策展数据:八主题", #ns.Data.themes == 8)
+	t("策展数据:十一主题", #ns.Data.themes == 11, #ns.Data.themes)
 	t("策展数据:zh/en/keywords 字段完整", badField == nil, badField)
 	t("策展数据:id/key 唯一", dupe == nil, dupe)
-	t("策展数据:officialSearch bool >= 20", officialBools >= 20, officialBools)
-	t("策展数据:总条数 >= 85", total >= 85, total)
+	t("策展数据:officialSearch bool >= 25", officialBools >= 25, officialBools)
+	t("策展数据:总条数 >= 120", total >= 120, total)
 end
 
 -- T1 本地化:zhCN 表命中、未知键回落、策展文案按语言取值、行标签第一句切分
@@ -371,7 +387,7 @@ end
 ns.Search:Rebuild()
 t("搜索:索引条数", #ns.Search.items == CVAR_TOTAL, #ns.Search.items)
 t("搜索:精确命中", #ns.Search:Query("camerazoomspeed") == 1)
-t("搜索:多词 AND", #ns.Search:Query("camera zoom") == 1)
+t("搜索:多词 AND", #ns.Search:Query("camera zoom speed") == 1, #ns.Search:Query("camera zoom speed"))
 t("搜索:tag:secure", #ns.Search:Query("tag:secure") == 1)
 E:Set("cvar", "dummyCvar7", "1", "user")
 t("搜索:tag:modified", #ns.Search:Query("tag:modified") == 1
@@ -435,6 +451,86 @@ for _, sn in ipairs(ns.Snapshots:List()) do
 end
 t("快照:确认后淘汰最旧份", sx ~= nil and #ns.Snapshots:List() == 10 and not s1Alive)
 t("快照:删除", ns.Snapshots:Delete(sx) and #ns.Snapshots:List() == 9)
+
+-- v0.3 聊天窗口域:全量快照回环 + 战斗锁
+local cwsnap = ns.Adapters.chatwindow:Serialize()
+t("chatwindow:导出窗口/消息组/频道", cwsnap[1].name == "General" and cwsnap[1].size == 14
+	and cwsnap[1].messages[2] == "YELL" and cwsnap[1].channels[1] == "General"
+	and cwsnap[2].name == "Log" and #cwsnap == 10)
+stub.chatWindows[1].name = "Messed"
+stub.chatWindows[1].size = 20
+stub.chatWindows[1].messages = { "GUILD", "PARTY" }
+stub.chatWindows[1].channels = { "Trade" }
+ns.Adapters.chatwindow:Restore(cwsnap)
+t("chatwindow:导入回环", stub.chatWindows[1].name == "General" and stub.chatWindows[1].size == 14
+	and #stub.chatWindows[1].messages == 2 and stub.chatWindows[1].messages[1] == "SAY"
+	and #stub.chatWindows[1].channels == 1 and stub.chatWindows[1].channels[1] == "General")
+stub.state.inCombat = true
+t("chatwindow:战斗锁 Restore 拒绝", ns.Adapters.chatwindow:Restore(cwsnap) == false)
+stub.state.inCombat = false
+
+-- v0.3 推荐包:结构约束(只推荐策展项)+ 预览 + 应用 + 整包撤销
+do
+	local curatedKeys = {}
+	local function walk(controls)
+		for _, c in ipairs(controls) do
+			if c.domain == "cvar" then curatedKeys[c.key] = true end
+			if c.children then walk(c.children) end
+		end
+	end
+	for _, th in ipairs(ns.Data.themes) do walk(th.controls) end
+	local bad
+	for _, pack in ipairs(ns.Data.packs) do
+		if not (pack.key and pack.title and pack.title.zh and pack.title.en
+			and pack.text and pack.text.zh ~= "" and pack.text.en ~= "" and #pack.values > 0) then
+			bad = pack.key or "?"
+		end
+		for _, item in ipairs(pack.values) do
+			if not curatedKeys[item.key] then bad = tostring(pack.key) .. ":" .. tostring(item.key) end
+			if type(item.value) ~= "string" then bad = tostring(pack.key) .. ":" .. tostring(item.key) .. ":value" end
+		end
+	end
+	t("推荐包:四个包结构完整且只引用策展项", #ns.Data.packs == 4 and bad == nil, bad)
+end
+local pvpPack
+for _, p in ipairs(ns.Data.packs) do
+	if p.key == "pvpinfo" then pvpPack = p end
+end
+local pchanges = ns.Packs:Preview(pvpPack)
+t("推荐包:预览只列有差异的项", #pchanges == 3, #pchanges)
+local pApplied, pQueued, pFailed = ns.Packs:Apply(pvpPack)
+t("推荐包:应用生效且进期望态", pFailed == 0 and C_CVar.GetCVar("nameplateShowEnemyPets") == "1"
+	and ns.db.profile.cvar["nameplateShowEnemyTotems"] == "1")
+local packEntry
+do
+	local log = ns.db.global.undoLog
+	for i = 0, 499 do
+		local p = ((log.head - 2 - i) % 500) + 1
+		local e = log.entries[p]
+		if not e then break end
+		if e.bulk and e.new == "pack:pvpinfo" and not e.undone then packEntry = e break end
+	end
+end
+r = E:Undo(packEntry)
+t("推荐包:整包撤销回环", r == "applied" and C_CVar.GetCVar("nameplateShowEnemyPets") == "0"
+	and C_CVar.GetCVar("nameplateShowEnemyGuardians") == "0")
+for _, item in ipairs(pvpPack.values) do
+	ns.db.profile.cvar[item.key] = nil
+end
+
+-- v0.3 拼音搜索:字表就位,全拼与首字母缩写命中策展项
+t("拼音:字表就位", ns.Data.pinyin and ns.Data.pinyin["姓"] == "xing")
+ns.Search:Rebuild()
+do
+	local hits = ns.Search:Query("xingmingban")
+	local found = false
+	for _, it in ipairs(hits) do
+		if it.key == "nameplateMaxDistance" then found = true end
+	end
+	t("拼音:全拼命中姓名板", found, #hits)
+	local h2 = ns.Search:Query("yuanshishubiao")
+	t("拼音:全拼命中原始鼠标输入", #h2 >= 1 and h2[1].key == "rawMouseEnable", h2[1] and h2[1].key)
+end
 
 -- T3 冲突检测:外部来源跨登录覆盖 >=3 次判冲突,同登录只计一次,两种处置
 E:Set("cvar", "dummyCvar30", "1", "user")

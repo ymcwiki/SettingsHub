@@ -24,6 +24,8 @@
 - review 队列每条勾掉前决定三件事:进不进策展(Data/Curated_*.lua)、census JSON 回不回写、加不加版本注记
 - 策展新条目:文案基准是实机 help + wiki 底稿,census 里 help 有错位前科,以实机为准
 - 存疑一律 `verify = true` + TODO:VERIFY 注释,UI 自动隐藏,验证后解除(台账在 docs/VERIFIED.md)
+- 策展中文文案有增改后重跑 `python3 scripts/gen_pinyin.py`(拼音字表 Data/Pinyin.lua 是生成物,勿手改)
+- 策展条目的 zh/en/keywords 三字段齐全是无头测试硬断言;valueLabels/buttonText/主题标题用英文原文并在 Locales/zhCN.lua 配译文
 
 ## 发布流程
 
