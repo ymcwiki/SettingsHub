@@ -147,6 +147,9 @@ local function rowTooltip(row, it)
 	end
 	if desc ~= "" then
 		GameTooltip:AddLine(L["Verified by hand"], 1, 0.82, 0.15, true)
+	elseif dictionary and dictionary.src == "f" then
+		GameTooltip:AddLine(L["Inferred from cvar naming and family patterns, not individually verified"],
+			0.55, 0.55, 0.55, true)
 	elseif dictionary then
 		GameTooltip:AddLine(L["Dictionary: from community docs (CC BY-SA), not individually verified in-game"],
 			0.55, 0.55, 0.55, true)

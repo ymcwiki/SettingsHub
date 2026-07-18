@@ -10,6 +10,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 WIKI = ROOT / "dumps" / "wiki_cvar_docs.json"
 ZH = ROOT / "scripts" / "data" / "dictionary_zh.json"
+SUPPLEMENTS_EN = ROOT / "scripts" / "data" / "supplements_en.json"
+FAMILY = ROOT / "scripts" / "data" / "family.json"
 OUT = ROOT / "Data" / "Encyclopedia.lua"
 BUDGET = 400 * 1024
 
@@ -29,6 +31,8 @@ def lua_string(value):
 def main():
     wiki = json.loads(WIKI.read_text(encoding="utf-8"))["cvars"]
     zh = json.loads(ZH.read_text(encoding="utf-8"))["zh"]
+    supplements_en = json.loads(SUPPLEMENTS_EN.read_text(encoding="utf-8"))
+    family = json.loads(FAMILY.read_text(encoding="utf-8"))["entries"]
 
     lines = [
         "-- 由 scripts/gen_encyclopedia.py 生成,勿手改",
@@ -41,11 +45,25 @@ def main():
     ]
     for name in sorted(zh):
         doc = wiki[name]
+        en = doc.get("desc", "") or supplements_en[name]
         fields = [
             f'zh = "{lua_string(zh[name])}"',
-            f'en = "{lua_string(doc["desc"])}"',
+            f'en = "{lua_string(en)}"',
         ]
         version = doc.get("version", "")
+        if version:
+            fields.append(f'ver = "{lua_string(version)}"')
+        lines.append(f'\t["{lua_string(name)}"] = {{ {", ".join(fields)} }},')
+
+    family_only = set(family) - set(zh)
+    for name in sorted(family_only):
+        entry = family[name]
+        fields = [
+            f'zh = "{lua_string(entry["zh"])}"',
+            f'en = "{lua_string(entry["en"])}"',
+            'src = "f"',
+        ]
+        version = wiki.get(name, {}).get("version", "")
         if version:
             fields.append(f'ver = "{lua_string(version)}"')
         lines.append(f'\t["{lua_string(name)}"] = {{ {", ".join(fields)} }},')
@@ -56,7 +74,10 @@ def main():
     if size > BUDGET:
         sys.exit(f"Encyclopedia.lua {size} 字节,超出 {BUDGET} 字节预算")
     OUT.write_text(body, encoding="utf-8")
-    print(f"{len(zh)} 条 -> {OUT.name}({size} 字节, {size / 1024:.1f} KB)")
+    print(
+        f"词典层 {len(zh)} 条 + 族群层 {len(family_only)} 条 = {len(zh) + len(family_only)} 条"
+        f" -> {OUT.name}({size} 字节, {size / 1024:.1f} KB)"
+    )
 
 
 if __name__ == "__main__":

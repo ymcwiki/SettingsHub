@@ -4,7 +4,8 @@
   "source_en": "warcraft.wiki.gg Console_variables/Complete_list (CC BY-SA 4.0)",
   "generated_by": "codex gpt-5.6-sol medium,任务卡见会话记录;Claude 质检(键完整/长度/禁词/抽样)",
   "date": "2026-07-18",
-  "note": "只解释含义不给推荐值;修订单条时直接改这里再跑 gen_encyclopedia.py"
+  "note": "只解释含义不给推荐值;修订单条时直接改这里再跑 gen_encyclopedia.py",
+  "note2": "12 条来自 wiki 每 CVar 子页面正文(2026-07-18 增补),en 原文在 supplements_en.json"
  },
  "zh": {
   "ActionButtonUseKeyDown": "技能按键按下瞬间就触发，而不是松开时。",
@@ -1021,6 +1022,18 @@
   "worldQuestFilterReputation": "控制地图是否显示奖励声望的世界任务，按角色保存",
   "worldQuestFilterResources": "控制地图是否显示奖励职业大厅或战争资源的世界任务",
   "worldViewCullMaxJobs": "设置世界视野剔除可同时使用的最大工作线程数",
-  "xpBarText": "控制经验条是否显示具体经验数值，按账号保存"
+  "xpBarText": "控制经验条是否显示具体经验数值，按账号保存",
+  "ObjectSelectionCircle": "显示或隐藏所选角色或宠物脚下的选择圆圈。",
+  "cameraBobbing": "启用第一人称模式下随移动产生的镜头晃动。",
+  "cameraPivot": "让镜头贴近地面时仍可自由转动视角。",
+  "cameraSmoothStyle": "控制镜头自动调整并跟随角色时采用的方式。",
+  "cameraTerrainTilt": "根据地形自动上下调整镜头角度，仅在智能跟随方式启用时生效。",
+  "cameraView": "记录最近保存的镜头位置，由 SaveView 保存并由 SetView 载入。",
+  "cameraViewBlendStyle": "控制切换到已保存镜头位置时平滑移动或立即跳转。",
+  "cameraWaterCollision": "启用镜头的水面碰撞，使其按玩家在水面上下的位置跟随。",
+  "cameraYawSmoothSpeed": "设置启用智能跟随方式时镜头自动横向转动的速度。",
+  "gameTip": "记录登录时已显示的载入画面提示，以便轮换提示内容。",
+  "synchronizeBindings": "控制客户端按键绑定是否保存到服务器。",
+  "synchronizeConfig": "控制会话后将角色及账号范围的 CVar 保存至服务器，供其他电脑同步或配置缓存删除后恢复。"
  }
 }
