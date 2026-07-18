@@ -84,8 +84,8 @@ SlashCmdList.SETTINGSHUB = ns.Guard(function(msg)
 	if msg == "test" then
 		ns.SelfTest:Run()
 	elseif msg == "test relog" then
-		-- 第三组会临时改一项服务器存储值直到重登验证,显式命令才跑
-		ns.SelfTest:Run("relog")
+		ns.Print("写管线测试已移至无头 CI,实机自测只读")
+		ns.SelfTest:Run()
 	elseif msg == "dump" then
 		ns.SelfTest:Dump()
 	elseif msg == "diag" then

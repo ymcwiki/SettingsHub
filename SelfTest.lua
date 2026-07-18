@@ -110,9 +110,38 @@ local function replaySurvival()
 	end
 end
 
-function M:Run(mode)
+function M:Run()
 	results = {}
-	ns.Print(L["Self-test touches test CVars only and restores them immediately"])
+	ns.Print("Self-test is read-only; write-pipeline tests run in headless CI")
+
+	local ok, n = ns.Enum:Refresh()
+	check(string.format(L["enum: >=1600 (got %s)"], tostring(n)), ok and n >= 1600, not ok and n or nil)
+
+	check("engine: write APIs present (not invoked)",
+		type(ns.Engine.Set) == "function"
+		and type(ns.Engine.Undo) == "function"
+		and type(ns.Engine.ResetToDefault) == "function"
+		and type(ns.Engine.RestoreAll) == "function")
+
+	for _, name in ipairs({
+		"cvar", "binding", "macro", "editmode", "clickbinding",
+		"mutesound", "tts", "consoleexec", "chatwindow",
+	}) do
+		check("adapter: " .. name, type(ns.Adapters[name]) == "table")
+	end
+
+	local log = ns.db and ns.db.global and ns.db.global.undoLog
+	check("undo ring: structure intact", type(log) == "table"
+		and type(log.head) == "number" and type(log.entries) == "table")
+	local queueOK, queueSize = pcall(ns.CombatQueue.Size, ns.CombatQueue)
+	check("combat queue: queryable", queueOK and type(queueSize) == "number", queueSize)
+
+	return report()
+end
+
+-- 仅供无头桩,禁止实机 slash 调用:这里覆盖真实写入、撤销、回默认与重登存活回环。
+function M:RunWriteTests()
+	results = {}
 
 	local ok, n = ns.Enum:Refresh()
 	check(string.format(L["enum: >=1600 (got %s)"], tostring(n)), ok and n >= 1600, not ok and n or nil)
@@ -132,19 +161,13 @@ function M:Run(mode)
 		end
 	end
 
-	-- 第三组会临时改一项服务器存储值直到重登:有残留标记时无条件收尾复原,
-	-- 新布置只在显式 /sh test relog 时进行(不乱动用户配置的承诺)
-	if ns.db.global.selftest or mode == "relog" then
-		replaySurvival()
-	else
-		ns.Print(L["Third group (relog survival) is opt-in: /sh test relog stages one server-stored test value until you relog"])
-	end
+	replaySurvival()
 
 	return report()
 end
 
 -- /sh diag:一条命令收全诊断证据,弹窗展示,一张截图带走
--- 内容:环境状态、写管线回环(pcall 捕获错误文本)、全策展项可写性扫描(写回当前值,零副作用)
+-- 内容:环境状态、只读能力检查、全策展项只读分类扫描
 local diagFrame
 
 local function showDiag(text)
@@ -216,7 +239,7 @@ function M:Diag()
 		C_CVar.AreCVarsLoaded and tostring(C_CVar.AreCVarsLoaded()) or "MISSING",
 		rawCmds and tostring(#rawCmds) or "NO-API", matched)
 
-	-- 只读体检(diag 承诺零改动):不做写入回环,写管线实测放在 /sh test
+	-- 只读体检(diag 承诺零改动):不做写入回环,写管线实测只放无头 CI
 	local okPipe, errPipe = pcall(function()
 		assert(ns.db, "db not initialized")
 		assert(ns.db.global.undoLog and ns.db.global.undoLog.head, "undo ring missing")
@@ -238,8 +261,8 @@ function M:Diag()
 		end
 	end
 
-	-- 全策展项可写性扫描:把当前值原样写回,拒绝写入的记名(blame 有 _selfWriting 保护)
-	local rejected, missing, secureSkip, tested = {}, 0, 0, 0
+	-- 全策展项只读分类扫描:根据枚举元数据判断,绝不写回当前值
+	local tested, readonly, missing, secureSkip = 0, 0, 0, 0
 	local function walk(controls)
 		for _, c in ipairs(controls) do
 			if c.domain == "cvar" and c.key then
@@ -247,14 +270,12 @@ function M:Diag()
 				local info = ns.Enum:Get(c.key)
 				if cur == nil then
 					missing = missing + 1
+				elseif info and info.readonly then
+					readonly = readonly + 1
 				elseif info and info.secure and InCombatLockdown() then
 					secureSkip = secureSkip + 1
 				else
 					tested = tested + 1
-					ns.Engine._selfWriting = true
-					local okw = C_CVar.SetCVar(c.key, cur)
-					ns.Engine._selfWriting = false
-					if not okw then rejected[#rejected + 1] = c.key end
 				end
 			end
 			if c.children then walk(c.children) end
@@ -263,10 +284,7 @@ function M:Diag()
 	for _, th in ipairs(ns.Data.themes or {}) do
 		walk(th.controls)
 	end
-	add("sweep: tested=%d missing=%d secureSkip=%d rejected=%d", tested, missing, secureSkip, #rejected)
-	if #rejected > 0 then
-		add("rejected: %s", table.concat(rejected, "  "))
-	end
+	add("sweep: tested=%d readonly=%d missing=%d secureSkip=%d", tested, readonly, missing, secureSkip)
 
 	-- 本次会话失败清单尾部
 	add("failures=%d", #ns.Engine.failures)
@@ -283,7 +301,7 @@ function M:Diag()
 	return lines
 end
 
--- /sh probe:鼠标焦点链 + 当前页首个勾选行的几何/状态 + 程序化点击回环
+-- /sh probe:只读输出鼠标焦点链 + 当前页首个勾选行的几何/状态
 -- 用法:鼠标悬停在问题控件上,聊天框输入 /sh probe 回车(打字期间鼠标别动)
 function M:Probe()
 	local foci
@@ -321,12 +339,6 @@ function M:Probe()
 		local es = row.check:GetEffectiveScale()
 		ns.Print(string.format("cursor(check-space): x=%.0f y=%.0f  scale=%.2f", cx / es, cy / es, es))
 	end
-	-- 程序化点击两次:验证 OnClick 处理器与写管线(净效果为零)
-	local v0 = row.check:GetChecked()
-	row.check:Click()
-	local v1 = row.check:GetChecked()
-	row.check:Click()
-	ns.Print(string.format("click test: %s -> %s -> %s", tostring(v0), tostring(v1), tostring(row.check:GetChecked())))
 end
 
 -- P7 元数据管线入口:全量落盘供仓库脚本 diff
