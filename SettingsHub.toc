@@ -59,6 +59,7 @@ Data\Packs.lua
 Data\Guides.lua
 Data\Pinyin.lua
 Data\Encyclopedia.lua
+Data\Topics.lua
 Data\Exposed.lua
 
 UI\Search.lua
