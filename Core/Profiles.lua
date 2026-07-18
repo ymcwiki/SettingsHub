@@ -8,6 +8,10 @@ local BULK_DOMAINS = { "binding", "macro", "editmode", "clickbinding", "tts", "c
 M.BULK_DOMAINS = BULK_DOMAINS
 M.SCENES = { "party", "raid", "arena", "pvp", "world" }
 
+local MAX_COMPRESSED = 256 * 1024
+local MAX_SERIALIZED = 2 * 1024 * 1024
+local MAX_ENTRIES = 50000
+
 local function autoCfg()
 	return ns.db.global.autoSwitch
 end
@@ -134,6 +138,69 @@ end
 -- 导入导出:LibSerialize + LibDeflate + EncodeForPrint(WeakAuras 同款管线)
 local MAGIC = "!SH1!"
 
+local function validatePayload(payload)
+	if type(payload.data) ~= "table" then return false, ns.L["payload.data must be a table"] end
+	if payload.domains ~= nil and type(payload.domains) ~= "table" then
+		return false, ns.L["payload.domains must be a table"]
+	end
+
+	local cvars = payload.data.cvar
+	if cvars ~= nil then
+		if type(cvars) ~= "table" then return false, ns.L["payload.data.cvar must be a table"] end
+		for k, v in pairs(cvars) do
+			if type(k) ~= "string" or k == "" then
+				return false, ns.L["payload.data.cvar keys must be non-empty strings"]
+			end
+			if type(v) ~= "string" and type(v) ~= "number" then
+				return false, string.format(ns.L["payload.data.cvar[%s] must be a string or number"], k)
+			end
+		end
+	end
+
+	local console = payload.data.consoleexec
+	if console ~= nil then
+		if type(console) ~= "table" then return false, ns.L["payload.data.consoleexec must be a table"] end
+		for k, v in pairs(console) do
+			if type(k) ~= "string" then
+				return false, ns.L["payload.data.consoleexec keys must be strings"]
+			end
+			if type(v) ~= "string" and type(v) ~= "number" then
+				return false, string.format(ns.L["payload.data.consoleexec[%s] must be a string or number"], k)
+			end
+		end
+	end
+
+	for _, domain in ipairs(BULK_DOMAINS) do
+		if payload.data[domain] ~= nil and type(payload.data[domain]) ~= "table" then
+			return false, string.format(ns.L["payload.data.%s must be a table"], domain)
+		end
+	end
+	if payload.data.mutesound ~= nil and type(payload.data.mutesound) ~= "table" then
+		return false, ns.L["payload.data.mutesound must be a table"]
+	end
+
+	local entries, seen = 0, {}
+	local function count(container)
+		if type(container) ~= "table" or seen[container] then return true end
+		seen[container] = true
+		for _, value in pairs(container) do
+			entries = entries + 1
+			if entries > MAX_ENTRIES then return false end
+			if type(value) == "table" and not count(value) then return false end
+		end
+		return true
+	end
+	if not count(payload) then
+		return false, string.format(ns.L["payload exceeds %d entries"], MAX_ENTRIES)
+	end
+	return true
+end
+
+local function acceptableCvar(key)
+	local entry = ns.Enum:Get(key)
+	return entry ~= nil and not entry.readonly
+end
+
 function M:Export()
 	local LibSerialize = LibStub("LibSerialize")
 	local LibDeflate = LibStub("LibDeflate")
@@ -157,10 +224,21 @@ function M:Decode(str)
 	local LibDeflate = LibStub("LibDeflate")
 	local compressed = LibDeflate:DecodeForPrint(body)
 	if not compressed then return nil, ns.L["decode failed"] end
-	local serialized = LibDeflate:DecompressDeflate(compressed)
+	if #compressed > MAX_COMPRESSED then
+		return nil, string.format(ns.L["compressed data exceeds %d bytes"], MAX_COMPRESSED)
+	end
+	local serialized, unprocessedByteCount = LibDeflate:DecompressDeflate(compressed)
 	if not serialized then return nil, ns.L["decompress failed"] end
+	if unprocessedByteCount ~= nil and unprocessedByteCount ~= 0 then
+		return nil, ns.L["compressed data has trailing bytes"]
+	end
+	if #serialized > MAX_SERIALIZED then
+		return nil, string.format(ns.L["decompressed data exceeds %d bytes"], MAX_SERIALIZED)
+	end
 	local ok, payload = LibSerialize:Deserialize(serialized)
 	if not ok or type(payload) ~= "table" or payload.v ~= 1 then return nil, ns.L["deserialize failed or version mismatch"] end
+	local valid, err = validatePayload(payload)
+	if not valid then return nil, err end
 	return payload
 end
 
@@ -168,17 +246,23 @@ end
 function M:DiffAgainstCurrent(payload)
 	local changes, unknown, bulk = {}, 0, {}
 	for k, want in pairs(payload.data.cvar or {}) do
-		local cur = ns.Adapters.cvar:Read(k)
-		if cur == nil then
+		if not acceptableCvar(k) then
 			unknown = unknown + 1
-		elseif cur ~= tostring(want) then
-			changes[#changes + 1] = { key = k, old = cur, new = tostring(want) }
+		else
+			local cur = ns.Adapters.cvar:Read(k)
+			if cur ~= tostring(want) then
+				changes[#changes + 1] = { key = k, old = cur, new = tostring(want) }
+			end
 		end
 	end
 	for k, want in pairs(payload.data.consoleexec or {}) do
-		local cur = ns.db.profile.consoleexec[k]
-		if cur ~= tostring(want) then
-			changes[#changes + 1] = { key = "console " .. k, old = tostring(cur), new = tostring(want) }
+		if not ns.Adapters.consoleexec:IsAllowed(k) then
+			unknown = unknown + 1
+		else
+			local cur = ns.db.profile.consoleexec[k]
+			if cur ~= tostring(want) then
+				changes[#changes + 1] = { key = "console " .. k, old = tostring(cur), new = tostring(want) }
+			end
 		end
 	end
 	for _, d in ipairs(BULK_DOMAINS) do
@@ -189,14 +273,22 @@ function M:DiffAgainstCurrent(payload)
 end
 
 function M:ApplyImport(payload)
-	local applied, failed = 0, 0
+	local applied, failed, skipped = 0, 0, 0
 	for k, want in pairs(payload.data.cvar or {}) do
-		local r = ns.Engine:Set("cvar", k, want, "import")
-		if r == "failed" then failed = failed + 1 else applied = applied + 1 end
+		if not acceptableCvar(k) then
+			skipped = skipped + 1
+		else
+			local r = ns.Engine:Set("cvar", k, want, "import")
+			if r == "failed" then failed = failed + 1 else applied = applied + 1 end
+		end
 	end
 	for k, want in pairs(payload.data.consoleexec or {}) do
-		local r = ns.Engine:Set("consoleexec", k, want, "import")
-		if r == "failed" then failed = failed + 1 else applied = applied + 1 end
+		if not ns.Adapters.consoleexec:IsAllowed(k) then
+			skipped = skipped + 1
+		else
+			local r = ns.Engine:Set("consoleexec", k, want, "import")
+			if r == "failed" then failed = failed + 1 else applied = applied + 1 end
+		end
 	end
 	if payload.data.mutesound then
 		ns.Adapters.mutesound:Restore(payload.data.mutesound)
@@ -207,6 +299,7 @@ function M:ApplyImport(payload)
 			ns.Adapters[d]:Restore(payload.data[d])
 		end
 	end
-	ns.Print(string.format(ns.L["Import done: %d applied, %d failed (see the Log page for failures)"], applied, failed))
+	ns.Print(string.format(ns.L["Import done: %d applied, %d failed, %d skipped (see the Log page for failures)"], applied, failed, skipped))
 	if ns.UI then ns.UI:Refresh() end
+	return applied, failed, skipped
 end

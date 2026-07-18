@@ -6,12 +6,35 @@ ns.Adapters.consoleexec = M
 
 -- console 命令无 getter,fire-and-forget:Read 返回记录的期望态,UI 必须明示无法回读校验
 
+local allowedConsole
+
+local function collectAllowed(controls)
+	for _, control in ipairs(controls or {}) do
+		if control.domain == "consoleexec" and type(control.key) == "string" then
+			allowedConsole[control.key] = true
+		end
+		if control.children then collectAllowed(control.children) end
+	end
+end
+
+function M:IsAllowed(key)
+	if not allowedConsole then
+		if not ns.Data or not ns.Data.themes then return false end
+		allowedConsole = {}
+		for _, theme in ipairs(ns.Data.themes) do collectAllowed(theme.controls) end
+	end
+	return allowedConsole[key] == true
+end
+
 function M:Read(key)
 	return ns.db.profile.consoleexec[key]
 end
 
 function M:Apply(key, value)
-	ConsoleExec(key .. " " .. tostring(value))
+	if not self:IsAllowed(key) then return false, "not-allowlisted" end
+	if ConsoleExec(key .. " " .. tostring(value)) ~= true then
+		return false, "console-rejected"
+	end
 	return true
 end
 
@@ -39,7 +62,9 @@ end
 function M:ReplayAll()
 	local n = 0
 	for k, v in pairs(ns.db.profile.consoleexec) do
-		if ns.Engine:Set("consoleexec", k, v, "replay") == "applied" then n = n + 1 end
+		if self:IsAllowed(k) and ns.Engine:Set("consoleexec", k, v, "replay") == "applied" then
+			n = n + 1
+		end
 	end
 	return n
 end
