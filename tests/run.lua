@@ -494,18 +494,28 @@ t("官方注册项:官方面板改值走写管线", C_CVar.GetCVar("ffxNether") 
 	and ns.db.profile.cvar["ffxNether"] == "0")
 E:Set("cvar", "ffxNether", offBefore, "user")
 
--- SelfTest 全流程(phase A 显式 relog 布置标记,phase B 普通 Run 也要完成收尾复原)
-local ok = ns.SelfTest:Run("relog")
+-- SelfTest 写覆盖仅在无头桩运行(两次调用模拟重登前后)
+local ok = ns.SelfTest:RunWriteTests()
 t("SelfTest phase A:全部断言通过", ok)
 t("SelfTest phase A:标记已布置", ns.db.global.selftest ~= nil)
 local markerKey = ns.db.global.selftest.key
 local markerOld = ns.db.global.selftest.old
-ok = ns.SelfTest:Run()
+ok = ns.SelfTest:RunWriteTests()
 t("SelfTest phase B:全部断言通过", ok)
 t("SelfTest phase B:标记清除且值复原", ns.db.global.selftest == nil
 	and C_CVar.GetCVar(markerKey) == markerOld)
-ns.SelfTest:Run()
-t("SelfTest:普通 Run 不布置重登标记", ns.db.global.selftest == nil)
+
+-- 实机入口 Run 必须只读:CVar、baseline 和撤销环游标均保持不变
+local readOnlyKey = "cameraZoomSpeed"
+local readOnlyValue = C_CVar.GetCVar(readOnlyKey)
+local readOnlyBaseline = ns.db.global.baseline["cvar:" .. readOnlyKey]
+local readOnlyUndoHead = ns.db.global.undoLog.head
+ok = ns.SelfTest:Run()
+t("SelfTest 只读 Run:全部断言通过", ok)
+t("SelfTest 只读 Run:不修改 CVar/baseline/undo head", C_CVar.GetCVar(readOnlyKey) == readOnlyValue
+	and ns.db.global.baseline["cvar:" .. readOnlyKey] == readOnlyBaseline
+	and ns.db.global.undoLog.head == readOnlyUndoHead)
+t("SelfTest 只读 Run:不布置重登标记", ns.db.global.selftest == nil)
 
 -- 12.0.7 兼容:AreCVarsLoaded 不存在时枚举照常;存在且返回 false 时才拒绝
 do
@@ -521,7 +531,7 @@ do
 	ns.Enum:Refresh()
 end
 
--- diag:管线回环 OK、扫描零拒绝(桩里大量策展键不存在,missing 属预期)
+-- diag:只读能力检查与元数据分类(桩里大量策展键不存在,missing 属预期)
 do
 	local headBefore = ns.db.global.undoLog.head
 	local zoomBefore = C_CVar.GetCVar("cameraZoomSpeed")
@@ -532,7 +542,8 @@ do
 		if l:find("sweep:", 1, true) then sweepLine = l end
 	end
 	t("diag:只读体检 OK", checksOK, dlines[3])
-	t("diag:扫描零拒绝", sweepLine and sweepLine:find("rejected=0", 1, true) ~= nil, sweepLine)
+	t("diag:扫描只读分类", sweepLine and sweepLine:find("readonly=", 1, true) ~= nil
+		and sweepLine:find("rejected=", 1, true) == nil, sweepLine)
 	t("diag:零改动(撤销环与值都没动)", ns.db.global.undoLog.head == headBefore
 		and C_CVar.GetCVar("cameraZoomSpeed") == zoomBefore)
 end
