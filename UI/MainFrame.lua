@@ -5,6 +5,13 @@ local G = ns.Guard
 local M = { pages = {}, pageOrder = {}, combatLocked = false }
 ns.UI = M
 
+-- StaticPopup 的 editBox 字段 11.x 起不保证存在(实机:12.0.7 上新建 profile
+-- 弹窗点接受无反应),新旧取法都试
+function M.PopupEditBox(dialog)
+	if dialog.GetEditBox then return dialog:GetEditBox() end
+	return dialog.editBox or dialog.EditBox
+end
+
 local FRAME_W, FRAME_H = 1000, 640
 local NAV_W = 150
 

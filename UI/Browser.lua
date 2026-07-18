@@ -17,11 +17,13 @@ StaticPopupDialogs["SETTINGSHUB_COPY"] = {
 	text = L["Ctrl+C to copy:"],
 	button1 = CLOSE,
 	hasEditBox = true, editBoxWidth = 320,
-	OnShow = function(self, data)
-		self.editBox:SetText(data or "")
-		self.editBox:HighlightText()
-		self.editBox:SetFocus()
-	end,
+	OnShow = G(function(self, data)
+		local eb = ns.UI.PopupEditBox(self)
+		if not eb then return end
+		eb:SetText(data or "")
+		eb:HighlightText()
+		eb:SetFocus()
+	end),
 	EditBoxOnEscapePressed = function(box) box:GetParent():Hide() end,
 	timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
 }
