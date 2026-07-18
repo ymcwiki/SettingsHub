@@ -205,6 +205,19 @@ t("只读写入:日志条目标 failed", E:LastEntry().failed == true)
 t("只读写入:baseline 未污染", ns.db.global.baseline["cvar:lockedCvar"] == nil and before == nil)
 t("只读写入:期望态未记录", ns.db.profile.cvar["lockedCvar"] == nil)
 
+-- Apply 抛 Lua 错误也必须走普通失败提交,并无条件释放自写标志
+do
+	local originalApply = ns.Adapters.cvar.Apply
+	ns.Adapters.cvar.Apply = function() error("apply-exploded") end
+	local thrownResult, thrownErr = E:Set("cvar", "dummyCvar62", "1", "user")
+	local thrownEntry = E:LastEntry()
+	ns.Adapters.cvar.Apply = originalApply
+	t("写入异常:返回 failed 与错误信息", thrownResult == "failed"
+		and tostring(thrownErr):find("apply%-exploded") ~= nil)
+	t("写入异常:_selfWriting 已复位", E._selfWriting == false)
+	t("写入异常:日志标 failed", thrownEntry.failed == true)
+end
+
 -- 战斗队列
 stub.state.inCombat = true
 r = E:Set("cvar", "nameplateMaxDistance", "41", "user")
@@ -218,6 +231,50 @@ stub.state.inCombat = false
 stub.fire("PLAYER_REGEN_ENABLED")
 t("脱战 flush:后写覆盖生效", C_CVar.GetCVar("nameplateMaxDistance") == "45")
 t("脱战 flush:队列清空", ns.CombatQueue:Size() == 0)
+
+-- Flush 只报告真正 applied 的项,脱战仍失败的项不虚报也不重入队
+do
+	local printed, originalPrint = {}, ns.Print
+	ns.Print = function(msg) printed[#printed + 1] = tostring(msg) end
+	ns.CombatQueue:Push("cvar", "lockedCvar", "9", "test")
+	ns.CombatQueue:Push("cvar", "dummyCvar63", "1", "test")
+	ns.CombatQueue:Flush()
+	ns.Print = originalPrint
+	local reportedOneApplied, reportedOneFailed, reportedAllApplied = false, false, false
+	for _, line in ipairs(printed) do
+		if line:find("1 项排队的写入", 1, true) then reportedOneApplied = true end
+		if line:find("1 项排队的写入失败", 1, true) then reportedOneFailed = true end
+		if line:find("2 项排队的写入", 1, true) then reportedAllApplied = true end
+	end
+	t("脱战 flush:成功项真实应用", C_CVar.GetCVar("dummyCvar63") == "1")
+	t("脱战 flush:成功失败分别计数", reportedOneApplied and reportedOneFailed, table.concat(printed, " | "))
+	t("脱战 flush:不虚报全部 applied 且失败不重排", not reportedAllApplied
+		and ns.CombatQueue:Size() == 0)
+end
+
+-- secure 写的撤销在战斗中排队,脱战实际应用后才提交 undone/期望态
+local queuedUndoEntry
+E:Set("cvar", "nameplateMaxDistance", "50", "user")
+queuedUndoEntry = E:LastEntry()
+stub.state.inCombat = true
+r = E:Undo(queuedUndoEntry)
+t("战斗撤销:queued 时尚未提交", r == "queued" and not queuedUndoEntry.undone
+	and ns.db.profile.cvar.nameplateMaxDistance == "50")
+stub.state.inCombat = false
+ns.CombatQueue:Flush()
+t("战斗撤销:Flush 后提交 undone 与 prevDesired", queuedUndoEntry.undone == true
+	and C_CVar.GetCVar("nameplateMaxDistance") == "45"
+	and ns.db.profile.cvar.nameplateMaxDistance == queuedUndoEntry.prevDesired)
+
+E:Set("cvar", "nameplateMaxDistance", "52", "user")
+stub.state.inCombat = true
+r = E:ResetToDefault("cvar", "nameplateMaxDistance")
+t("战斗回默认:queued 时保留期望态", r == "queued"
+	and ns.db.profile.cvar.nameplateMaxDistance == "52")
+stub.state.inCombat = false
+ns.CombatQueue:Flush()
+t("战斗回默认:Flush 后清期望态", C_CVar.GetCVar("nameplateMaxDistance") == "60"
+	and ns.db.profile.cvar.nameplateMaxDistance == nil)
 
 -- 环形日志回绕
 for i = 1, 510 do
@@ -433,6 +490,44 @@ local _, cvarFailed, cvarSkipped = ns.Profiles:ApplyImport({
 t("profile:导入真跳过未知与只读 CVar", cvarFailed == 0 and cvarSkipped == 2
 	and ns.db.profile.cvar[unknownCvar] == nil and ns.db.profile.cvar.lockedCvar == nil
 	and ns.db.global.baseline["cvar:" .. unknownCvar] == nil and #E.failures == failuresBefore)
+
+-- 含 bulk 域的 profile/导入在战斗中整体拒绝;纯 CVar profile 仍可切换并自行排队
+ns.Profiles:Switch("BulkCombatProfile", "测试准备")
+ns.Profiles:CaptureDomain("tts")
+ns.Profiles:Switch("Default", "测试准备")
+local combatProfileMessages, profilePrint = {}, ns.Print
+ns.Print = function(msg) combatProfileMessages[#combatProfileMessages + 1] = tostring(msg) end
+stub.state.inCombat = true
+local rejectedSwitch = ns.Profiles:Switch("BulkCombatProfile", "战斗拒绝")
+t("profile:战斗拒绝 bulk profile 且 active 不变", rejectedSwitch == false
+	and ns.Profiles:Current() == "Default")
+t("profile:战斗拒绝 bulk profile 有提示", #combatProfileMessages == 1
+	and combatProfileMessages[1]:find("脱战后重试", 1, true) ~= nil,
+	table.concat(combatProfileMessages, " | "))
+local ttsRateBeforeImport = stub.tts.rate
+local ia, ifailed, iskipped, importWhy = ns.Profiles:ApplyImport({
+	v = 1, data = { tts = { speechRate = 99 } },
+})
+t("profile:战斗拒绝 bulk 导入且无部分应用", ia == 0 and ifailed == 0 and iskipped == 0
+	and importWhy == "in-combat-bulk" and stub.tts.rate == ttsRateBeforeImport
+	and #combatProfileMessages == 2
+	and combatProfileMessages[2]:find("脱战后重试", 1, true) ~= nil)
+stub.state.inCombat = false
+ns.Print = profilePrint
+
+ns.Profiles:Switch("PureCombatProfile", "测试准备")
+E:Set("cvar", "nameplateMaxDistance", "47", "user")
+ns.Profiles:Switch("Default", "测试准备")
+E:Set("cvar", "nameplateMaxDistance", "60", "test")
+stub.state.inCombat = true
+ns.Profiles:Switch("PureCombatProfile", "战斗纯 CVar")
+t("profile:战斗中纯 CVar profile 正常切换并排队", ns.Profiles:Current() == "PureCombatProfile"
+	and ns.CombatQueue:Size() == 1 and C_CVar.GetCVar("nameplateMaxDistance") == "60")
+stub.state.inCombat = false
+ns.CombatQueue:Flush()
+t("profile:纯 CVar profile 脱战后生效", C_CVar.GetCVar("nameplateMaxDistance") == "47")
+ns.Profiles:Switch("Default", "测试清理")
+E:Set("cvar", "nameplateMaxDistance", "60", "test")
 
 -- P6 四轴:场景轴切换与回落
 ns.db.global.autoSwitch.scene.enabled = true

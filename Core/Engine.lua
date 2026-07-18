@@ -30,12 +30,12 @@ function M:Notify(domain, key)
 end
 
 -- 统一写管线:一切写入(UI/导入/重放/撤销/还原)都走这里,顺序固定
-function M:Set(domain, key, value, source)
+function M:Set(domain, key, value, source, onApplied)
 	local adapter = ns.Adapters[domain]
 	if not adapter then return "failed", "no-adapter:" .. tostring(domain) end
 
 	if InCombatLockdown() and not adapter:IsCombatSafe(key) then
-		ns.CombatQueue:Push(domain, key, value, source)
+		ns.CombatQueue:Push(domain, key, value, source, onApplied)
 		self:Notify(domain, key)
 		return "queued"
 	end
@@ -57,8 +57,12 @@ function M:Set(domain, key, value, source)
 	pushEntry(entry)
 
 	self._selfWriting = true
-	local ok, err = adapter:Apply(key, value)
+	local pok, ok, err = pcall(adapter.Apply, adapter, key, value)
 	self._selfWriting = false
+	if not pok then
+		err = ok
+		ok = false
+	end
 
 	if not ok then
 		entry.failed = true
@@ -107,14 +111,17 @@ function M:Undo(entry)
 		return "applied"
 	end
 	if entry.old == nil then return "failed", "no-old-value" end
-	local r, err = self:Set(entry.domain, entry.key, entry.old, "undo")
-	if r == "applied" then
+	local function commitUndo()
 		entry.undone = true
 		local bucket = DESIRED_DOMAINS[entry.domain]
 		if bucket then
 			-- 恢复该写入发生前的期望态(可能为 nil,即当时未被本插件管理)
 			ns.db.profile[bucket][entry.key] = entry.prevDesired
 		end
+	end
+	local r, err = self:Set(entry.domain, entry.key, entry.old, "undo", commitUndo)
+	if r == "applied" then
+		commitUndo()
 	end
 	return r, err
 end
@@ -143,10 +150,15 @@ function M:ResetToDefault(domain, key)
 	if not adapter or not adapter.Default then return "failed", "no-default" end
 	local def = adapter:Default(key)
 	if def == nil then return "failed", "no-default" end
-	local r, err = self:Set(domain, key, def, "reset")
+	local function commitReset()
+		if domain == "cvar" then
+			-- 回默认即停止管理该项:清期望态,不再重放
+			ns.db.profile.cvar[key] = nil
+		end
+	end
+	local r, err = self:Set(domain, key, def, "reset", commitReset)
 	if r == "applied" and domain == "cvar" then
-		-- 回默认即停止管理该项:清期望态,不再重放
-		ns.db.profile.cvar[key] = nil
+		commitReset()
 	end
 	return r, err
 end
