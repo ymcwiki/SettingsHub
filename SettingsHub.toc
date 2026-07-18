@@ -40,6 +40,7 @@ Core\Actions.lua
 Core\Profiles.lua
 Core\Snapshots.lua
 Core\Packs.lua
+Core\Trial.lua
 
 Data\Curated_A_Camera.lua
 Data\Curated_B_SoftTarget.lua
@@ -53,11 +54,13 @@ Data\Curated_I_Chat.lua
 Data\Curated_J_Input.lua
 Data\Curated_K_QuestMap.lua
 Data\Packs.lua
+Data\Guides.lua
 Data\Pinyin.lua
 Data\Exposed.lua
 
 UI\Search.lua
 UI\MainFrame.lua
+UI\DiscoverPage.lua
 UI\Browser.lua
 UI\Widgets.lua
 UI\ThemePage.lua
@@ -65,6 +68,7 @@ UI\PackPage.lua
 UI\ProfilePage.lua
 UI\SnapshotPage.lua
 UI\LogPage.lua
+UI\MinimapButton.lua
 Integration\OfficialSettings.lua
 
 SelfTest.lua

@@ -43,8 +43,28 @@ local function build(parent)
 	intro:SetWordWrap(true)
 	intro:SetText(L["Curated one-click bundles. Apply shows a preview first; every applied pack is one bulk entry in the undo log."])
 
+	-- 试穿状态条:有活动试穿时显示剩余时间与两个处置按钮
+	page.trialText = page:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	page.trialText:SetPoint("TOPLEFT", 4, -22)
+	page.trialRevert = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+	page.trialRevert:SetSize(90, 20)
+	page.trialRevert:SetPoint("TOPRIGHT", -220, -18)
+	page.trialRevert:SetText(L["Revert now"])
+	page.trialRevert:SetScript("OnClick", function()
+		ns.Trial:Revert("manual")
+		page:OnPageShow()
+	end)
+	page.trialPromote = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+	page.trialPromote:SetSize(90, 20)
+	page.trialPromote:SetPoint("LEFT", page.trialRevert, "RIGHT", 6, 0)
+	page.trialPromote:SetText(L["Keep it"])
+	page.trialPromote:SetScript("OnClick", function()
+		ns.Trial:Promote()
+		page:OnPageShow()
+	end)
+
 	page.rows = {}
-	local y = -36
+	local y = -48
 	for _, pack in ipairs(ns.Data.packs or {}) do
 		local row = CreateFrame("Frame", nil, page)
 		row:SetPoint("TOPLEFT", 0, y)
@@ -68,6 +88,21 @@ local function build(parent)
 		applyBtn:SetPoint("TOPRIGHT", -8, 2)
 		applyBtn:SetText(L["Preview & apply"])
 		applyBtn:SetScript("OnClick", function() previewAndConfirm(pack) end)
+
+		-- 试穿:临时应用,10 分钟后自动还原(登出/手动还原/转常驻见顶部状态条)
+		local trialBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+		trialBtn:SetSize(120, 22)
+		trialBtn:SetPoint("TOPRIGHT", -8, -22)
+		trialBtn:SetText(L["Try for 10 min"])
+		trialBtn:SetScript("OnClick", function()
+			local n, err = ns.Trial:Start(pack.values, 10, T(pack.title))
+			if not n then
+				ns.Print(L["A trial is already running; revert or keep it first"])
+			else
+				ns.Print(string.format(L["Trying pack [%s]: %d values applied, auto-reverts in 10 minutes"], T(pack.title), n))
+			end
+			page:OnPageShow()
+		end)
 
 		local desc = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 		desc:SetPoint("TOPLEFT", 62, -22)
@@ -98,6 +133,17 @@ local function build(parent)
 			local changes = ns.Packs:Preview(row.pack)
 			row.count:SetFormattedText(L["%d settings, %d differ from current"], #row.pack.values, #changes)
 		end
+		local tr = ns.Trial:Active()
+		if tr then
+			local remain = math.max(0, math.floor((tr.expires - time()) / 60))
+			self.trialText:SetFormattedText("|cffffcc00" .. L["Trial running: [%s], about %d min left"] .. "|r",
+				tostring(tr.label), remain)
+		else
+			self.trialText:SetText("")
+		end
+		self.trialText:SetShown(tr ~= nil)
+		self.trialRevert:SetShown(tr ~= nil)
+		self.trialPromote:SetShown(tr ~= nil)
 	end
 
 	ns.Engine:AddListener(function()

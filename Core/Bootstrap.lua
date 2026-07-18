@@ -12,6 +12,8 @@ local defaults = {
 		snapshots = {},
 		conflicts = {},
 		loginCounter = 0,
+		tipsDismissed = {},
+		minimap = { angle = 220 },
 		autoSwitch = {
 			-- 角色轴 = AceDB 内建 profileKeys + char.baseProfile,不在此表
 			scene = { enabled = false, map = {} },
@@ -38,6 +40,7 @@ ns.f:RegisterEvent("PLAYER_ENTERING_WORLD")
 ns.f:RegisterEvent("CVAR_UPDATE")
 ns.f:RegisterEvent("PLAYER_REGEN_ENABLED")
 ns.f:RegisterEvent("PLAYER_REGEN_DISABLED")
+ns.f:RegisterEvent("PLAYER_LOGOUT")
 ns.f:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 ns.f:RegisterEvent("DISPLAY_SIZE_CHANGED")
 
@@ -49,8 +52,11 @@ ns.f:SetScript("OnEvent", function(_, event, ...)
 		ns.Enum:Refresh()
 		ns.Blame:Init()
 		ns.Conflicts:OnLogin()
+		ns.Trial:Arm()
 		ns.Replay:OnLogin()
 		if ns.Integration then ns.Integration:Register() end
+	elseif event == "PLAYER_LOGOUT" then
+		if ns.Trial:Active() then ns.Trial:Revert("logout") end
 	elseif event == "PLAYER_ENTERING_WORLD" then
 		ns.Replay:Assert()
 		ns.Profiles:EvaluateContext()

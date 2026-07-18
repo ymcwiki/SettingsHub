@@ -233,6 +233,24 @@ L["Apply pack [%s]: %d values change (details in chat)%s. One bulk snapshot is l
 L["Pack [%s] applied: %d ok, %d queued (combat), %d failed. Undo it as a whole from the Log page."] = "推荐包 [%s] 已应用:成功 %d,战斗排队 %d,失败 %d。日志页可整包撤销。"
 L["pack"] = "推荐包"
 
+-- 发现页与试穿(v0.4)
+L["Discover"] = "发现"
+L["Suggestions based on your current values"] = "按你的当前设置给出的建议"
+L["Don't remind me"] = "不再提示"
+L["Suggestion applied: %s = %s"] = "建议已应用:%s = %s"
+L["Open the matching pack"] = "打开对应推荐包"
+L["New settings in patch %s"] = "%s 补丁新增设置"
+L["Try for 10 min"] = "试穿 10 分钟"
+L["Trying pack [%s]: %d values applied, auto-reverts in 10 minutes"] = "试穿推荐包 [%s]:已应用 %d 项,10 分钟后自动还原"
+L["A trial is already running; revert or keep it first"] = "已有试穿在进行,先还原或转常驻"
+L["Trial running: [%s], about %d min left"] = "试穿中:[%s],剩约 %d 分钟"
+L["Revert now"] = "立即还原"
+L["Keep it"] = "转为常驻"
+L["Trial [%s] reverted (%s), %d values restored"] = "试穿 [%s] 已还原(%s),恢复 %d 项"
+L["Trial [%s] promoted: %d values pinned to the active profile"] = "试穿 [%s] 已转常驻:%d 项记入当前 profile"
+L["trial"] = "试穿"
+L["Click to open; drag to move around the minimap"] = "点击打开;拖动可沿小地图移动位置"
+
 -- 冲突区(T3)
 L["Conflicts: these values keep getting overwritten by other addons"] = "冲突:以下项被其他插件跨登录反复覆盖"
 L["%s overwritten by %s on %d logins"] = "%s 被 %s 覆盖了 %d 个登录"

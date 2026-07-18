@@ -99,6 +99,9 @@ local function baseRow(parent, control, height)
 	f.label:SetJustifyH("LEFT")
 	f.label:SetWordWrap(false)
 	f:EnableMouse(true)
+	local hl = f:CreateTexture(nil, "HIGHLIGHT")
+	hl:SetAllPoints()
+	hl:SetColorTexture(1, 1, 1, 0.05)
 	attachTooltip(f, control)
 	return f
 end
@@ -150,11 +153,6 @@ local function editBuilder(parent, control)
 		self:SetText(trimNum(curValue(control)))
 		self:ClearFocus()
 	end)
-	if control.range then
-		local hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-		hint:SetPoint("LEFT", f.edit, "RIGHT", 8, 0)
-		hint:SetFormattedText(L["%s to %s"], trimNum(control.range[1]), trimNum(control.range[2]))
-	end
 	function f:Update()
 		local locked = markModified(self, control)
 		if not self.edit:HasFocus() then
@@ -164,33 +162,118 @@ local function editBuilder(parent, control)
 	end
 	return f
 end
-builders.number = editBuilder
 builders.string = editBuilder
 
+-- 带范围的数值项用真滑块(v0.4 手感升级):拖动实时显示,松手一次性提交(不刷爆撤销日志);
+-- 旁边保留精确输入框。无范围数值项退回输入框
+local function sliderBuilder(parent, control)
+	local f = baseRow(parent, control, 30)
+	local lo, hi, step = control.range[1], control.range[2], control.range[3] or 1
+	f.slider = CreateFrame("Slider", nil, f)
+	f.slider:SetOrientation("HORIZONTAL")
+	f.slider:SetSize(150, 16)
+	f.slider:SetPoint("LEFT", CTRL_X, 0)
+	f.slider:SetMinMaxValues(lo, hi)
+	f.slider:SetValueStep(step)
+	f.slider:SetObeyStepOnDrag(true)
+	f.slider:EnableMouse(true)
+	local track = f.slider:CreateTexture(nil, "BACKGROUND")
+	track:SetPoint("LEFT", 0, 0)
+	track:SetPoint("RIGHT", 0, 0)
+	track:SetHeight(4)
+	track:SetColorTexture(0.4, 0.45, 0.55, 0.5)
+	f.slider:SetThumbTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
+	local thumb = f.slider:GetThumbTexture()
+	if thumb then thumb:SetSize(24, 24) end
+
+	f.edit = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
+	f.edit:SetSize(56, 20)
+	f.edit:SetPoint("LEFT", f.slider, "RIGHT", 14, 0)
+	f.edit:SetAutoFocus(false)
+	f.edit:SetScript("OnEnterPressed", function(self)
+		setValue(control, self:GetText())
+		self:ClearFocus()
+	end)
+	f.edit:SetScript("OnEscapePressed", function(self)
+		self:SetText(trimNum(curValue(control)))
+		self:ClearFocus()
+	end)
+
+	f.slider:SetScript("OnValueChanged", function(self, v, userInput)
+		if userInput then
+			f.edit:SetText(trimNum(v))
+		end
+	end)
+	f.slider:SetScript("OnMouseUp", function(self)
+		setValue(control, trimNum(self:GetValue()))
+	end)
+	attachTooltip(f.slider, control)
+	function f:Update()
+		local locked = markModified(self, control)
+		local v = tonumber(curValue(control))
+		if v then f.slider:SetValue(v) end
+		if not self.edit:HasFocus() then
+			self.edit:SetText(trimNum(curValue(control)))
+		end
+		f.slider:SetEnabled(not locked)
+		self.edit:SetEnabled(not locked)
+	end
+	return f
+end
+
+function builders.number(parent, control)
+	if control.range then
+		return sliderBuilder(parent, control)
+	end
+	return editBuilder(parent, control)
+end
+
+-- 枚举项用现代下拉菜单(11.x DropdownButton),环境不支持时退回循环按钮
 function builders.enum(parent, control)
 	local f = baseRow(parent, control, 28)
-	f.btn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-	f.btn:SetSize(110, 22)
-	f.btn:SetPoint("LEFT", CTRL_X, 0)
 	local function display(v)
 		local label = control.valueLabels and control.valueLabels[tostring(v)]
 		return label and string.format("%s(%s)", L[label], tostring(v)) or tostring(v)
 	end
-	f.btn:SetScript("OnClick", function()
-		local cur = tostring(curValue(control) or control.values[1])
-		local idx = 1
-		for i, v in ipairs(control.values) do
-			if tostring(v) == cur then idx = i break end
-		end
-		local nextV = control.values[idx % #control.values + 1]
-		setValue(control, nextV)
+	local hasDropdown = MenuUtil and pcall(function()
+		f.btn = CreateFrame("DropdownButton", nil, f, "WowStyle1DropdownTemplate")
 	end)
-	attachTooltip(f.btn, control)
-	function f:Update()
-		local locked = markModified(self, control)
-		f.btn:SetText(display(curValue(control) or "?"))
-		f.btn:SetEnabled(not locked)
+	if hasDropdown and f.btn then
+		f.btn:SetSize(150, 24)
+		f.btn:SetPoint("LEFT", CTRL_X, 0)
+		f.btn:SetupMenu(function(_, root)
+			for _, v in ipairs(control.values) do
+				root:CreateRadio(display(v),
+					function() return tostring(curValue(control)) == tostring(v) end,
+					function() setValue(control, v) end)
+			end
+		end)
+		function f:Update()
+			local locked = markModified(self, control)
+			if f.btn.OverrideText then
+				f.btn:OverrideText(display(curValue(control) or "?"))
+			end
+			f.btn:SetEnabled(not locked)
+		end
+	else
+		f.btn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+		f.btn:SetSize(110, 22)
+		f.btn:SetPoint("LEFT", CTRL_X, 0)
+		f.btn:SetScript("OnClick", function()
+			local cur = tostring(curValue(control) or control.values[1])
+			local idx = 1
+			for i, v in ipairs(control.values) do
+				if tostring(v) == cur then idx = i break end
+			end
+			setValue(control, control.values[idx % #control.values + 1])
+		end)
+		function f:Update()
+			local locked = markModified(self, control)
+			f.btn:SetText(display(curValue(control) or "?"))
+			f.btn:SetEnabled(not locked)
+		end
 	end
+	attachTooltip(f.btn, control)
 	return f
 end
 

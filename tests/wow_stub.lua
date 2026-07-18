@@ -97,6 +97,10 @@ end
 
 _G.SlashCmdList = {}
 _G.GetBuildInfo = function() return "12.1.0", "58000", "Jan 1 2026", 120100 end
+stub.timers = {}
+_G.C_Timer = {
+	After = function(sec, fn) stub.timers[#stub.timers + 1] = { at = sec, fn = fn } end,
+}
 _G.GetLocale = function() return stub.state.locale or "zhCN" end
 _G.date = os.date
 

@@ -10,19 +10,20 @@ local FILES = {
 	"Adapters/ClickBinding.lua", "Adapters/MuteSound.lua", "Adapters/TTS.lua", "Adapters/ConsoleExec.lua",
 	"Adapters/ChatWindow.lua",
 	"Core/Engine.lua", "Core/Conflicts.lua", "Core/Replay.lua", "Core/Actions.lua", "Core/Profiles.lua",
-	"Core/Snapshots.lua", "Core/Packs.lua",
+	"Core/Snapshots.lua", "Core/Packs.lua", "Core/Trial.lua",
 	"Data/Curated_A_Camera.lua", "Data/Curated_B_SoftTarget.lua", "Data/Curated_C_Nameplate.lua",
 	"Data/Curated_D_CombatText.lua", "Data/Curated_E_QoL.lua", "Data/Curated_F_Graphics.lua",
 	"Data/Curated_G_Sound.lua", "Data/Curated_H_Dev.lua", "Data/Curated_I_Chat.lua",
 	"Data/Curated_J_Input.lua", "Data/Curated_K_QuestMap.lua",
-	"Data/Packs.lua", "Data/Pinyin.lua", "Data/Exposed.lua",
+	"Data/Packs.lua", "Data/Guides.lua", "Data/Pinyin.lua", "Data/Exposed.lua",
 	"UI/Search.lua",
 	"SelfTest.lua",
 }
 -- 纯 UI 文件无法在桩里执行,只做编译级语法检查
 local SYNTAX_ONLY = {
-	"UI/MainFrame.lua", "UI/Browser.lua", "UI/Widgets.lua", "UI/ThemePage.lua", "UI/PackPage.lua",
-	"UI/ProfilePage.lua", "UI/SnapshotPage.lua", "UI/LogPage.lua", "Integration/OfficialSettings.lua",
+	"UI/MainFrame.lua", "UI/DiscoverPage.lua", "UI/Browser.lua", "UI/Widgets.lua", "UI/ThemePage.lua",
+	"UI/PackPage.lua", "UI/ProfilePage.lua", "UI/SnapshotPage.lua", "UI/LogPage.lua",
+	"UI/MinimapButton.lua", "Integration/OfficialSettings.lua",
 }
 for _, f in ipairs(FILES) do
 	local chunk = assert(loadfile(ROOT .. "/" .. f))
@@ -572,6 +573,58 @@ do
 	local h2 = ns.Search:Query("yuanshishubiao")
 	t("拼音:全拼命中原始鼠标输入", #h2 >= 1 and h2[1].key == "rawMouseEnable", h2[1] and h2[1].key)
 end
+
+-- v0.4 发现层数据:引导项 id 可解析、pack 引用存在、建议条件字段合法且引用策展键
+do
+	local byId, curatedKeys = {}, {}
+	local function walk(controls)
+		for _, c in ipairs(controls) do
+			byId[c.id] = c
+			if c.domain == "cvar" then curatedKeys[c.key] = true end
+			if c.children then walk(c.children) end
+		end
+	end
+	for _, th in ipairs(ns.Data.themes) do walk(th.controls) end
+	local packKeys = {}
+	for _, p in ipairs(ns.Data.packs) do packKeys[p.key] = true end
+	local bad
+	for _, g in ipairs(ns.Data.guides) do
+		if not (g.key and g.title and g.title.zh and g.title.en and g.blurb and g.blurb.zh and g.blurb.en
+			and #g.items > 0) then bad = tostring(g.key) end
+		for _, id in ipairs(g.items) do
+			if not byId[id] then bad = tostring(g.key) .. ":" .. tostring(id) end
+		end
+		if g.pack and not packKeys[g.pack] then bad = tostring(g.key) .. ":pack" end
+	end
+	local OPS = { eq = true, lt = true, gt = true }
+	for _, tip in ipairs(ns.Data.tips) do
+		if not (tip.key and tip.cvar and OPS[tip.op] and tip.value and tip.suggest
+			and tip.text and tip.text.zh and tip.text.en and tip.action and tip.action.zh and tip.action.en) then
+			bad = "tip:" .. tostring(tip.key)
+		end
+		if tip.cvar and not curatedKeys[tip.cvar] then bad = "tip:" .. tostring(tip.key) .. ":cvar" end
+	end
+	t("发现层:引导与建议数据完整且引用可解析", #ns.Data.guides >= 6 and #ns.Data.tips >= 3 and bad == nil, bad)
+end
+
+-- v0.4 试穿:应用不进期望态、到期自动还原、转常驻进期望态、一次一套
+E:Set("cvar", "dummyCvar50", "5", "user")
+local trialN = ns.Trial:Start({ { key = "dummyCvar50", value = "9" } }, 10, "t1")
+t("试穿:应用生效且期望态不动", trialN == 1 and C_CVar.GetCVar("dummyCvar50") == "9"
+	and ns.db.profile.cvar["dummyCvar50"] == "5" and ns.Trial:Active() ~= nil)
+local n2, terr = ns.Trial:Start({ { key = "dummyCvar50", value = "3" } }, 10, "t2")
+t("试穿:一次只允许一套", n2 == nil and terr == "active")
+stub.timers[#stub.timers].fn()
+t("试穿:到期自动还原", C_CVar.GetCVar("dummyCvar50") == "5" and ns.Trial:Active() == nil)
+ns.Trial:Start({ { key = "dummyCvar50", value = "8" } }, 10, "t3")
+ns.Trial:Promote()
+t("试穿:转常驻记入期望态", C_CVar.GetCVar("dummyCvar50") == "8"
+	and ns.db.profile.cvar["dummyCvar50"] == "8" and ns.Trial:Active() == nil)
+ns.db.global.trial = { label = "stale", expires = time() - 60, revert = { dummyCvar50 = "5" } }
+ns.Trial:Arm()
+t("试穿:过期残留登录即还原", C_CVar.GetCVar("dummyCvar50") == "5" and ns.Trial:Active() == nil)
+E:Set("cvar", "dummyCvar50", "0", "test")
+ns.db.profile.cvar["dummyCvar50"] = nil
 
 -- T3 冲突检测:外部来源跨登录覆盖 >=3 次判冲突,同登录只计一次,两种处置
 E:Set("cvar", "dummyCvar30", "1", "user")
