@@ -100,7 +100,7 @@ end
 function M:Undo(entry)
 	if entry.failed or entry.undone then return "failed", "not-undoable" end
 	if entry.bulk then
-		local ok = ns.Adapters[entry.domain]:Restore(entry.old)
+		local ok = ns.Adapters[entry.domain]:Restore(entry.old, "undo")
 		if ok == false then return "failed", "restore-failed" end
 		entry.undone = true
 		self:Notify(entry.domain, entry.key)
@@ -154,27 +154,43 @@ end
 -- 一键回暴雪默认:对本插件改过的全部项逐条 ResetToDefault(期望态随之清除)
 function M:ResetAllToDefault()
 	local baseline = ns.db.global.baseline
-	local n, failed = 0, 0
+	local n_applied, n_queued, n_failed = 0, 0, 0
 	for bk in pairs(baseline) do
 		local domain, key = bk:match("^([^:]+):(.+)$")
 		local r = self:ResetToDefault(domain, key)
-		if r == "failed" then failed = failed + 1 else n = n + 1 end
+		if r == "applied" then
+			n_applied = n_applied + 1
+			baseline[bk] = nil
+			local bucket = DESIRED_DOMAINS[domain]
+			if bucket then ns.db.profile[bucket][key] = nil end
+		elseif r == "queued" then
+			n_queued = n_queued + 1
+		else
+			n_failed = n_failed + 1
+		end
 	end
-	return n, failed
+	return n_applied, n_queued, n_failed
 end
 
 -- 一键全量还原/卸载还原共用:把 baseline 里全部首触原值写回
--- 迭代中 Set 不会改 baseline(bk 已存在则跳过首触记录),pairs 安全
+-- Set 不会改 baseline(bk 已存在则跳过首触记录);applied 后只删除当前 bk
 function M:RestoreAll(source)
 	source = source or "uninstall"
 	local baseline = ns.db.global.baseline
-	local n, failed = 0, 0
+	local n_applied, n_queued, n_failed = 0, 0, 0
 	for bk in pairs(baseline) do
 		local domain, key = bk:match("^([^:]+):(.+)$")
 		local r = self:Set(domain, key, baseline[bk], source)
-		if r == "failed" then failed = failed + 1 else n = n + 1 end
+		if r == "applied" then
+			n_applied = n_applied + 1
+			baseline[bk] = nil
+			local bucket = DESIRED_DOMAINS[domain]
+			if bucket then ns.db.profile[bucket][key] = nil end
+		elseif r == "queued" then
+			n_queued = n_queued + 1
+		else
+			n_failed = n_failed + 1
+		end
 	end
-	wipe(baseline)
-	wipe(ns.db.profile.cvar)
-	return n, failed
+	return n_applied, n_queued, n_failed
 end

@@ -54,12 +54,17 @@ end
 function M:Revert(reason)
 	local tr = trial()
 	if not tr then return 0 end
-	ns.db.global.trial = nil
 	local n = 0
 	for key, old in pairs(tr.revert) do
-		if ns.Engine:Set("cvar", key, old, "trial") ~= "failed" then
+		if ns.Engine:Set("cvar", key, old, "trial") == "applied" then
+			tr.revert[key] = nil
 			n = n + 1
 		end
+	end
+	if next(tr.revert) == nil then
+		ns.db.global.trial = nil
+	else
+		ns.db.global.trial = tr
 	end
 	ns.Print(string.format(ns.L["Trial [%s] reverted (%s), %d values restored"],
 		tostring(tr.label), tostring(reason), n))
