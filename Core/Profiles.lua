@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 
-local M = { contextAxis = nil }
+local M = { contextAxis = nil, _knownProfiles = {} }
 ns.Profiles = M
 
 -- 批量域:profile 存 Serialize 快照,应用时整域 Restore(先 LogBulk 记撤销快照)
@@ -14,6 +14,21 @@ local MAX_ENTRIES = 50000
 
 local function autoCfg()
 	return ns.db.global.autoSwitch
+end
+
+local function hasBulkDomains(profile)
+	if not profile or not profile.domains then return false end
+	for _, d in ipairs(BULK_DOMAINS) do
+		if profile.domains[d] and profile[d] then return true end
+	end
+	return false
+end
+
+local function importHasBulkDomains(payload)
+	for _, d in ipairs(BULK_DOMAINS) do
+		if payload.data[d] ~= nil then return true end
+	end
+	return false
 end
 
 function M:Current()
@@ -46,6 +61,10 @@ end
 
 -- 把激活 profile 的内容应用到实机
 function M:ApplyActive(label)
+	if InCombatLockdown() and hasBulkDomains(ns.db.profile) then
+		ns.Print(ns.L["Cannot apply a profile with bulk domains during combat; try again after combat"])
+		return false, "in-combat-bulk"
+	end
 	ns.Replay:ApplyDesired("profile")
 	ns.Adapters.consoleexec:ReplayAll()
 	for _, d in ipairs(BULK_DOMAINS) do
@@ -59,6 +78,12 @@ end
 -- 切换语义(P6):应用前先快照当前活动值入撤销日志;手动切换更新角色基准 profile
 function M:Switch(name, reason, isContext)
 	if ns.db:GetCurrentProfile() == name then return end
+	self._knownProfiles[ns.db:GetCurrentProfile()] = ns.db.profile
+	local target = (ns.db.profiles and ns.db.profiles[name]) or self._knownProfiles[name]
+	if InCombatLockdown() and hasBulkDomains(target) then
+		ns.Print(ns.L["Cannot apply a profile with bulk domains during combat; try again after combat"])
+		return false, "in-combat-bulk"
+	end
 	local label = "profile:" .. name
 
 	local prevMute = {}
@@ -75,6 +100,7 @@ function M:Switch(name, reason, isContext)
 	record(ns.db.profile.cvar)
 
 	ns.db:SetProfile(name)
+	self._knownProfiles[name] = ns.db.profile
 	record(ns.db.profile.cvar)
 	ns.Engine:LogBulk("cvar", cvarSnap, label)
 
@@ -273,6 +299,10 @@ function M:DiffAgainstCurrent(payload)
 end
 
 function M:ApplyImport(payload)
+	if InCombatLockdown() and importHasBulkDomains(payload) then
+		ns.Print(ns.L["Cannot import bulk domains during combat; try again after combat"])
+		return 0, 0, 0, "in-combat-bulk"
+	end
 	local applied, failed, skipped = 0, 0, 0
 	for k, want in pairs(payload.data.cvar or {}) do
 		if not acceptableCvar(k) then
