@@ -88,7 +88,7 @@ local function buildFrame()
 
 	local hint = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	hint:SetPoint("LEFT", searchBox, "RIGHT", 10, 0)
-	hint:SetText(L["Filters: tag:modified tag:new tag:secure tag:hidden"])
+	hint:SetText(L["Filters: tag:favorite tag:modified tag:new tag:secure tag:hidden"])
 
 	combatBanner = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	combatBanner:SetPoint("TOPRIGHT", close, "TOPLEFT", -12, -8)

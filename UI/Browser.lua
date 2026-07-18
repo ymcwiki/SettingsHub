@@ -32,6 +32,12 @@ local function scopeBadge(scope)
 	return "|cff999999" .. L["Machine"] .. "|r"
 end
 
+local function toggleFavorite(key)
+	ns.Favorites:Toggle(key)
+	-- 纯 UI 状态,不走写管线;刷新让星标分类计数与当前列表(星标分类下取消即移出)同步
+	ns.UI:Refresh()
+end
+
 local function flagText(it)
 	local parts = {}
 	if it.info.secure then parts[#parts + 1] = "|cffff5555" .. L["Secure"] .. "|r" end
@@ -98,6 +104,8 @@ local function showRowMenu(row, it)
 			StaticPopup_Show("SETTINGSHUB_COPY", nil, nil,
 				string.format("/console %s %s", it.key, tostring(it.info.value)))
 		end)
+		root:CreateButton(ns.Favorites:IsFavorite(it.key) and L["Remove from favorites"] or L["Add to favorites"],
+			function() toggleFavorite(it.key) end)
 		if ns.Profiles then
 			root:CreateButton(L["Pin current value to active profile"], function()
 				ns.Profiles:Pin("cvar", it.key)
@@ -134,9 +142,26 @@ end
 local function buildRow(row)
 	row.built = true
 	row:RegisterForClicks("RightButtonUp")
+	row.star = CreateFrame("Button", nil, row)
+	row.star:SetSize(18, 18)
+	row.star:SetPoint("LEFT", COL.name + 2, 0)
+	row.star.text = row.star:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	row.star.text:SetPoint("CENTER")
+	row.star:SetScript("OnClick", G(function(self)
+		if row.it then toggleFavorite(row.it.key) end
+	end))
+	row.star:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+		GameTooltip:AddLine(L["Toggle favorite"], 1, 1, 1)
+		GameTooltip:AddLine(L["Favorites gather in the star category on the left and the tag:favorite filter"],
+			0.8, 0.8, 0.8, true)
+		GameTooltip:Show()
+	end)
+	row.star:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
 	row.name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-	row.name:SetPoint("LEFT", COL.name + 4, 0)
-	row.name:SetWidth(COL.value - COL.name - 10)
+	row.name:SetPoint("LEFT", COL.name + 22, 0)
+	row.name:SetWidth(COL.value - COL.name - 28)
 	row.name:SetJustifyH("LEFT")
 	row.name:SetWordWrap(false)
 
@@ -174,6 +199,9 @@ end
 
 local function updateRow(row, it)
 	row.it = it
+	local fav = ns.Favorites:IsFavorite(it.key)
+	row.star.text:SetText(fav and "★" or "☆")
+	row.star.text:SetTextColor(fav and 1 or 0.55, fav and 0.82 or 0.55, fav and 0.15 or 0.55)
 	local curated = it.control and ns.ControlText(it.control) ~= ""
 	row.name:SetText((curated and "|cffffcc00•|r " or "") .. it.key)
 	local modified = it.info.value ~= it.info.default
@@ -212,7 +240,7 @@ local function build(parent)
 		fs:SetPoint("LEFT", x, 0)
 		fs:SetText(text)
 	end
-	headCol(L["Name"], COL.name + 4)
+	headCol(L["Name"], COL.name + 22)
 	headCol(L["Current (click to edit)"], COL.value)
 	headCol(L["Default"], COL.default)
 	headCol(L["Scope"], COL.scope)
@@ -245,6 +273,12 @@ local function build(parent)
 		for id, n in pairs(counts) do sorted[#sorted + 1] = { id = id, n = n } end
 		table.sort(sorted, function(a, b) return a.n > b.n end)
 		table.insert(sorted, 1, { id = nil, n = ns.Enum.count, all = true })
+		local favN = 0
+		for _, key in ipairs(ns.Favorites:List()) do
+			-- 只计本客户端存在的项;别的客户端收藏的键留在表里不显示也不丢
+			if ns.Enum.cache[key] then favN = favN + 1 end
+		end
+		table.insert(sorted, 2, { id = "favorite", n = favN, favorite = true })
 		for _, btn in ipairs(self.catButtons) do btn:Hide() end
 		local y = 0
 		for i, c in ipairs(sorted) do
@@ -260,7 +294,9 @@ local function build(parent)
 				self.catButtons[i] = btn
 			end
 			btn:SetPoint("TOPLEFT", 0, y)
-			local label = c.all and L["All"] or (CATEGORY_NAMES[c.id] or (L["Category"] .. " " .. tostring(c.id)))
+			local label = c.all and L["All"]
+				or c.favorite and ("★ " .. L["Favorites"])
+				or (CATEGORY_NAMES[c.id] or (L["Category"] .. " " .. tostring(c.id)))
 			local sel = (self.category == c.id) or (c.all and self.category == nil)
 			btn.text:SetText(string.format("%s%s (%d)|r", sel and "|cffffcc00" or "|cffcccccc", label, c.n))
 			btn:SetScript("OnClick", function()

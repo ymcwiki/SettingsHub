@@ -6,7 +6,7 @@ local ADDON, ns = "SettingsHub", {}
 local FILES = {
 	"Locales/Locale.lua", "Locales/zhCN.lua",
 	"Core/Guard.lua",
-	"Core/Bootstrap.lua", "Core/Enum.lua", "Core/CombatQueue.lua", "Core/Blame.lua",
+	"Core/Bootstrap.lua", "Core/Enum.lua", "Core/CombatQueue.lua", "Core/Blame.lua", "Core/Favorites.lua",
 	"Adapters/Cvar.lua", "Adapters/Binding.lua", "Adapters/Macro.lua", "Adapters/EditMode.lua",
 	"Adapters/ClickBinding.lua", "Adapters/MuteSound.lua", "Adapters/TTS.lua", "Adapters/ConsoleExec.lua",
 	"Adapters/ChatWindow.lua",
@@ -399,6 +399,36 @@ t("搜索:tag:hidden 未暴露项不受影响",
 E:Set("cvar", "dummyCvar7", "0", "test")
 ns.db.profile.cvar["dummyCvar7"] = nil
 t("搜索:类别计数", ns.Search:CategoryCounts()[4] == CVAR_TOTAL)
+
+-- 收藏只写账号级书签表;不碰 CVar、期望态、baseline 或撤销环
+local favoriteUndoHead = ns.db.global.undoLog.head
+local favoriteValue = C_CVar.GetCVar("cameraZoomSpeed")
+local favoriteExpected = ns.db.profile.cvar["cameraZoomSpeed"]
+local favoriteBaseline = ns.db.global.baseline["cvar:cameraZoomSpeed"]
+t("收藏:切换为已收藏", ns.Favorites:Toggle("cameraZoomSpeed")
+	and ns.Favorites:IsFavorite("cameraZoomSpeed"))
+t("收藏:只存账号级", ns.db.global.favorites["cameraZoomSpeed"] == true
+	and ns.db.profile.favorites == nil)
+t("收藏:不修改游戏设置与写管线", C_CVar.GetCVar("cameraZoomSpeed") == favoriteValue
+	and ns.db.profile.cvar["cameraZoomSpeed"] == favoriteExpected
+	and ns.db.global.baseline["cvar:cameraZoomSpeed"] == favoriteBaseline
+	and ns.db.global.undoLog.head == favoriteUndoHead)
+
+-- tag 谓词与星标伪分类过滤;别的客户端收藏的键(本机枚举没有)不影响查询
+ns.db.global.favorites["ghostCvarNotOnThisClient"] = true
+t("收藏:列表保留跨客户端键", ns.Favorites:Count() == 2
+	and ns.Favorites:List()[1] == "cameraZoomSpeed")
+t("收藏:tag:favorite 命中", #ns.Search:Query("tag:favorite") == 1
+	and ns.Search:Query("tag:favorite")[1].key == "cameraZoomSpeed")
+t("收藏:tag:fav 兼容别名", #ns.Search:Query("tag:fav") == 1)
+t("收藏:星标伪分类过滤", #ns.Search:Query("", "favorite") == 1
+	and ns.Search:Query("", "favorite")[1].key == "cameraZoomSpeed")
+t("收藏:关键词与标签 AND", #ns.Search:Query("tag:favorite camerazoomspeed") == 1
+	and #ns.Search:Query("tag:favorite nameplate") == 0)
+t("收藏:切换为未收藏", not ns.Favorites:Toggle("cameraZoomSpeed")
+	and not ns.Favorites:IsFavorite("cameraZoomSpeed"))
+ns.db.global.favorites["ghostCvarNotOnThisClient"] = nil
+t("收藏:清空后无命中", #ns.Search:Query("tag:favorite") == 0)
 
 -- SelfTest 全流程(phase A 显式 relog 布置标记,phase B 普通 Run 也要完成收尾复原)
 local ok = ns.SelfTest:Run("relog")

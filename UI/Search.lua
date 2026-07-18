@@ -62,7 +62,13 @@ function M:Rebuild()
 	return items
 end
 
+local function isFavorite(it)
+	return ns.Favorites:IsFavorite(it.key)
+end
+
 local TAGS = {
+	favorite = isFavorite,
+	fav = isFavorite, -- 短别名,对已经习惯 tag:fav 的用户兼容
 	modified = function(it) return it.info.value ~= it.info.default end,
 	secure = function(it) return it.info.secure end,
 	hidden = function(it) return not (ns.Data.exposed and ns.Data.exposed[it.key]) end,
@@ -72,7 +78,7 @@ local TAGS = {
 	end,
 }
 
--- 多词 AND;tag:modified/new/secure/hidden 为谓词;category 为控制台类别过滤
+-- 多词 AND;tag:favorite/modified/new/secure/hidden 为谓词;category 为控制台类别过滤
 function M:Query(text, category)
 	if not self.items then self:Rebuild() end
 	local words, preds = {}, {}
@@ -87,7 +93,9 @@ function M:Query(text, category)
 	local out = {}
 	for _, it in ipairs(self.items) do
 		local ok = true
-		if category and it.info.category ~= category then ok = false end
+		if category == "favorite" then
+			if not ns.Favorites:IsFavorite(it.key) then ok = false end
+		elseif category and it.info.category ~= category then ok = false end
 		if ok then
 			for i = 1, #preds do
 				if not preds[i](it) then ok = false break end

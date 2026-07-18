@@ -13,6 +13,7 @@ local defaults = {
 		conflicts = {},
 		loginCounter = 0,
 		tipsDismissed = {},
+		favorites = {},
 		minimap = { angle = 220 },
 		luaErrors = {},
 		autoSwitch = {

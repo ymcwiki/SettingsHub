@@ -25,6 +25,7 @@ Core\Bootstrap.lua
 Core\Enum.lua
 Core\CombatQueue.lua
 Core\Blame.lua
+Core\Favorites.lua
 Adapters\Cvar.lua
 Adapters\Binding.lua
 Adapters\Macro.lua
