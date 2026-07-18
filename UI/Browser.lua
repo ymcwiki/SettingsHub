@@ -5,11 +5,6 @@ local G = ns.Guard
 local ROW_H = 24
 local CAT_W = 110
 
--- ConsoleGetAllCommands 的 category 数字段位(census 口径:4=Game 最多,1=Graphics,5=Default,0=Debug,7=Sound)
-local CATEGORY_NAMES = {
-	[0] = "Debug", [1] = "Graphics", [2] = "Console", [3] = "Combat", [4] = "Game",
-	[5] = "Default", [6] = "Net", [7] = "Sound", [8] = "GM", [10] = "Bnet",
-}
 
 local COL = { name = 0, value = 320, default = 445, scope = 570, flags = 630 }
 
@@ -291,9 +286,17 @@ local function build(parent)
 
 	function page:RebuildCategories()
 		local counts = ns.Search:CategoryCounts()
+		-- 按主题固定顺序排列(Data/Topics),空主题隐藏,「其他」置末
 		local sorted = {}
-		for id, n in pairs(counts) do sorted[#sorted + 1] = { id = id, n = n } end
-		table.sort(sorted, function(a, b) return a.n > b.n end)
+		for _, t in ipairs(ns.Data.topicOrder) do
+			if (counts[t.key] or 0) > 0 then
+				sorted[#sorted + 1] = { id = t.key, n = counts[t.key], zh = t.zh }
+			end
+		end
+		local other = ns.Data.TOPIC_OTHER
+		if (counts[other.key] or 0) > 0 then
+			sorted[#sorted + 1] = { id = other.key, n = counts[other.key], zh = other.zh }
+		end
 		table.insert(sorted, 1, { id = nil, n = ns.Enum.count, all = true })
 		local favN = 0
 		for _, key in ipairs(ns.Favorites:List()) do
@@ -318,7 +321,7 @@ local function build(parent)
 			btn:SetPoint("TOPLEFT", 0, y)
 			local label = c.all and L["All"]
 				or c.favorite and ("★ " .. L["Favorites"])
-				or (CATEGORY_NAMES[c.id] or (L["Category"] .. " " .. tostring(c.id)))
+				or c.zh or tostring(c.id)
 			local sel = (self.category == c.id) or (c.all and self.category == nil)
 			btn.text:SetText(string.format("%s%s (%d)|r", sel and "|cffffcc00" or "|cffcccccc", label, c.n))
 			btn:SetScript("OnClick", function()

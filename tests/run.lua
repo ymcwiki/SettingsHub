@@ -16,7 +16,7 @@ local FILES = {
 	"Data/Curated_D_CombatText.lua", "Data/Curated_E_QoL.lua", "Data/Curated_F_Graphics.lua",
 	"Data/Curated_G_Sound.lua", "Data/Curated_H_Dev.lua", "Data/Curated_I_Chat.lua",
 	"Data/Curated_J_Input.lua", "Data/Curated_K_QuestMap.lua",
-	"Data/Packs.lua", "Data/Guides.lua", "Data/Pinyin.lua", "Data/Encyclopedia.lua", "Data/Exposed.lua",
+	"Data/Packs.lua", "Data/Guides.lua", "Data/Pinyin.lua", "Data/Encyclopedia.lua", "Data/Topics.lua", "Data/Exposed.lua",
 	"UI/Search.lua",
 	"Integration/OfficialSettings.lua",
 	"SelfTest.lua",
@@ -610,7 +610,19 @@ t("搜索:tag:hidden 未暴露项不受影响",
 	#ns.Search:Query("dummycvar7 tag:hidden") == #ns.Search:Query("dummycvar7"))
 E:Set("cvar", "dummyCvar7", "0", "test")
 ns.db.profile.cvar["dummyCvar7"] = nil
-t("搜索:类别计数", ns.Search:CategoryCounts()[4] == CVAR_TOTAL)
+-- 主题分类(Data/Topics):每条 CVar 落一个主题,计数之和 = 全部
+t("主题:cameraZoomSpeed 归相机", ns.Data.ClassifyTopic("cameraZoomSpeed") == "camera")
+t("主题:nameplateMaxDistance 归姓名板", ns.Data.ClassifyTopic("nameplateMaxDistance") == "nameplate")
+t("主题:无家族名归其他", ns.Data.ClassifyTopic("dummyCvar7") == "other")
+local topicSum = 0
+for _, cnt in pairs(ns.Search:CategoryCounts()) do topicSum = topicSum + cnt end
+t("主题:分组计数之和等于全部", topicSum == CVAR_TOTAL, topicSum)
+t("主题:按主题过滤命中相机项", (function()
+	for _, it in ipairs(ns.Search:Query("", "camera")) do
+		if it.key == "cameraZoomSpeed" then return true end
+	end
+	return false
+end)())
 
 -- 收藏只写账号级书签表;不碰 CVar、期望态、baseline 或撤销环
 local favoriteUndoHead = ns.db.global.undoLog.head

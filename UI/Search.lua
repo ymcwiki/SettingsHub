@@ -100,7 +100,7 @@ function M:Query(text, category)
 		local ok = true
 		if category == "favorite" then
 			if not ns.Favorites:IsFavorite(it.key) then ok = false end
-		elseif category and it.info.category ~= category then ok = false end
+		elseif category and ns.Data.ClassifyTopic(it.key) ~= category then ok = false end
 		if ok then
 			for i = 1, #preds do
 				if not preds[i](it) then ok = false break end
@@ -116,11 +116,12 @@ function M:Query(text, category)
 	return out
 end
 
+-- 按主题(Data/Topics)分组计数,取代旧的控制台数字类别
 function M:CategoryCounts()
 	if not self.items then self:Rebuild() end
 	local counts = {}
 	for _, it in ipairs(self.items) do
-		local c = it.info.category or -1
+		local c = ns.Data.ClassifyTopic(it.key)
 		counts[c] = (counts[c] or 0) + 1
 	end
 	return counts
