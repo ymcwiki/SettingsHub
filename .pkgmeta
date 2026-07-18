@@ -1,18 +1,19 @@
 package-as: SettingsHub
 enable-nolib-creation: no
 
-# 外部库固定版本(可复现打包):svn 用 commit 指 revision,git 用 tag。
+# 外部库固定版本(可复现打包)。注意:BigWigs packager 对 svn 只支持
+# tags/ 目录名(tag:),不支持按 revision 钉(commit: 会被当 tag 拉 tags/<N> 直接 404)。
 # 升级流程:改这里的版本号 → 本地同步 Libs/ → 跑无头测试 → 提交。
 externals:
   Libs/LibStub:
     url: https://repos.wowace.com/wow/libstub/trunk
-    commit: 109
+    tag: 1.0.3
   Libs/CallbackHandler-1.0:
     url: https://repos.wowace.com/wow/callbackhandler/trunk/CallbackHandler-1.0
-    commit: 29
+    tag: 1.0.9
   Libs/AceDB-3.0:
     url: https://repos.wowace.com/wow/ace3/trunk/AceDB-3.0
-    commit: 1399
+    tag: Release-r1390
   Libs/LibSerialize:
     url: https://github.com/rossnichols/LibSerialize
     tag: v1.2.2
