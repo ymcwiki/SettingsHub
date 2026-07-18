@@ -1,0 +1,14 @@
+{
+ "ObjectSelectionCircle": "This CVar turns the circle under a selected person/pet on and off.",
+ "cameraBobbing": "Enables camera bobbing in first person mode.",
+ "cameraPivot": "Lets you free look when the camera is on the ground.",
+ "cameraSmoothStyle": "Controls the automatic camera adjustment (following) style.",
+ "cameraTerrainTilt": "Automatically changes the camera angle based on terrain. If the character climbs a slope, the camera will rotate upwards; if the character descends it will rotate downwards. Only works if a smart following style is enabled.",
+ "cameraView": "Stores the last saved camera position the camera was in. Saved camera positions are saved by SaveView and loaded by SetView.",
+ "cameraViewBlendStyle": "Controls if the camera moves from saved positions smoothly or instantly. Saved camera positions are saved by SaveView and loaded by SetView.",
+ "cameraWaterCollision": "Enables water collision for the camera. Depending on the player being above or below the water level, the camera will follow.",
+ "cameraYawSmoothSpeed": "Sets the speed, at which the camera auto-adjusts when a smart following style is enabled.",
+ "gameTip": "Tracks loading screens to cycle the tip during login.",
+ "synchronizeBindings": "Whether client keybindings should be saved to the server.",
+ "synchronizeConfig": "Instructs the client whether to save character- and account-scoped CVars to the server for synchronization after each session, for recall on another machine or if config-cache.wtf is deleted.  This setting has normal (client-wide) scope."
+}

@@ -40,10 +40,11 @@ stub.addCvar("lockedCvar", { value = "5", default = "5", readonly = true })
 stub.addCvar("alwaysCompareItems", { value = "0", default = "0", sAcc = true })
 stub.addCvar("autoLootDefault", { value = "0", default = "0", sChar = true })
 stub.addCvar("reloadui", { commandType = 1 })
-local encyclopediaCount, encyclopediaKey, encyclopediaEntry = 0
+local encyclopediaCount, encyclopediaKey, encyclopediaEntry, encyclopediaFamilyEntry = 0
 for key, entry in pairs(ns.Data.encyclopedia or {}) do
 	encyclopediaCount = encyclopediaCount + 1
 	if not encyclopediaKey then encyclopediaKey, encyclopediaEntry = key, entry end
+	if entry.src == "f" and not encyclopediaFamilyEntry then encyclopediaFamilyEntry = entry end
 end
 if encyclopediaKey then stub.addCvar(encyclopediaKey, { value = "0", default = "0" }) end
 -- v0.3 推荐包引用的策展键(应用测试要真实写入)
@@ -394,7 +395,11 @@ end
 
 -- 搜索索引与过滤词
 ns.Search:Rebuild()
-t("百科:词典层数据存在且条数 >= 1000", encyclopediaCount >= 1000, encyclopediaCount)
+t("百科:分层数据存在且总条数 >= 1300", encyclopediaCount >= 1300, encyclopediaCount)
+t("百科:子页面增补进入词典层", ns.Data.encyclopedia.cameraTerrainTilt ~= nil
+	and ns.Data.encyclopedia.cameraTerrainTilt.src == nil)
+t("百科:族群层条目存在且中文非空", encyclopediaFamilyEntry ~= nil
+	and encyclopediaFamilyEntry.zh ~= nil and encyclopediaFamilyEntry.zh ~= "")
 t("百科:策展键不在词典层", ns.Data.encyclopedia.cameraZoomSpeed == nil)
 local encyclopediaZhPair = encyclopediaEntry and encyclopediaEntry.zh
 	and encyclopediaEntry.zh:match("([\228-\233][\128-\191][\128-\191][\228-\233][\128-\191][\128-\191])")
