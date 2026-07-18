@@ -33,13 +33,19 @@ StaticPopupDialogs["SETTINGSHUB_NEW_PROFILE"] = {
 	text = L["New profile name:"],
 	button1 = ACCEPT, button2 = CANCEL,
 	hasEditBox = true,
-	OnAccept = function(self)
-		local name = self.editBox:GetText():match("^%s*(.-)%s*$")
+	OnAccept = ns.Guard(function(self)
+		local eb = ns.UI.PopupEditBox(self)
+		local name = eb and eb:GetText():match("^%s*(.-)%s*$") or ""
 		if name ~= "" then
 			ns.Profiles:Switch(name, L["created"])
 			ns.UI:Refresh()
 		end
-	end,
+	end),
+	EditBoxOnEnterPressed = ns.Guard(function(box)
+		local dialog = box:GetParent()
+		local b1 = (dialog.GetButton1 and dialog:GetButton1()) or dialog.button1
+		if b1 then b1:Click() end
+	end),
 	EditBoxOnEscapePressed = function(box) box:GetParent():Hide() end,
 	timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
 }
