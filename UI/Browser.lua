@@ -120,8 +120,13 @@ local function rowTooltip(row, it)
 	GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
 	GameTooltip:AddLine(it.key, 1, 1, 1)
 	local desc = it.control and ns.ControlText(it.control) or ""
+	local dictionary = ns.Data.encyclopedia and ns.Data.encyclopedia[it.key]
 	if desc ~= "" then
 		GameTooltip:AddLine(desc, 0.9, 0.9, 0.6, true)
+	elseif dictionary then
+		local locale = GetLocale()
+		local text = (locale == "zhCN" or locale == "zhTW") and dictionary.zh or dictionary.en
+		if text and text ~= "" then GameTooltip:AddLine(text, 0.9, 0.9, 0.6, true) end
 	end
 	if it.info.help ~= "" then
 		GameTooltip:AddLine(it.info.help, 0.6, 0.6, 0.6, true)
@@ -137,6 +142,16 @@ local function rowTooltip(row, it)
 	local v = it.control and it.control.version
 	if v and v.added then
 		GameTooltip:AddDoubleLine(L["Added in"], v.added, 0.8, 0.8, 0.8, 0.6, 0.9, 1)
+	elseif dictionary and dictionary.ver then
+		GameTooltip:AddDoubleLine(L["Added in"], dictionary.ver, 0.8, 0.8, 0.8, 0.6, 0.9, 1)
+	end
+	if desc ~= "" then
+		GameTooltip:AddLine(L["Verified by hand"], 1, 0.82, 0.15, true)
+	elseif dictionary then
+		GameTooltip:AddLine(L["Dictionary: from community docs (CC BY-SA), not individually verified in-game"],
+			0.55, 0.55, 0.55, true)
+	else
+		GameTooltip:AddLine(L["Internal cvar, purpose undocumented by Blizzard"], 0.55, 0.55, 0.55, true)
 	end
 	GameTooltip:Show()
 end
@@ -195,8 +210,10 @@ local function buildRow(row)
 	row:SetScript("OnClick", G(function(self, button)
 		if button == "RightButton" then showRowMenu(self, self.it) end
 	end))
-	row:SetScript("OnEnter", function(self) rowTooltip(self, self.it) end)
-	row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	row:SetScript("OnEnter", G(function(self)
+		if self.it then rowTooltip(self, self.it) end
+	end))
+	row:SetScript("OnLeave", G(function() GameTooltip:Hide() end))
 end
 
 local function updateRow(row, it)

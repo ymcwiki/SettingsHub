@@ -44,6 +44,7 @@ function M:Rebuild()
 	local items = {}
 	for name, info in pairs(ns.Enum.cache) do
 		local c = cur[name]
+		local dictionary = ns.Data.encyclopedia and ns.Data.encyclopedia[name]
 		local parts = { name:lower() }
 		if info.help and info.help ~= "" then parts[#parts + 1] = info.help:lower() end
 		if c and c.text then
@@ -54,6 +55,10 @@ function M:Rebuild()
 			end
 			if c.text.en and c.text.en ~= "" then parts[#parts + 1] = c.text.en:lower() end
 			for _, w in ipairs(c.text.keywords or {}) do parts[#parts + 1] = w:lower() end
+		end
+		if dictionary then
+			if dictionary.zh and dictionary.zh ~= "" then parts[#parts + 1] = dictionary.zh:lower() end
+			if dictionary.en and dictionary.en ~= "" then parts[#parts + 1] = dictionary.en:lower() end
 		end
 		items[#items + 1] = { key = name, info = info, control = c, blob = table.concat(parts, " ") }
 	end
