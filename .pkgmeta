@@ -25,3 +25,4 @@ ignore:
   - docs
   - scripts
   - tests
+  - requirements-dev.txt
