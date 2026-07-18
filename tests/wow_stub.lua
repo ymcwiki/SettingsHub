@@ -33,13 +33,23 @@ end
 _G.time = os.time
 _G.InCombatLockdown = function() return stub.state.inCombat end
 
+-- UI 方法一律 no-op 兜底:测试只关心逻辑,不关心布局
+local function uiNoop(t)
+	return setmetatable(t or {}, { __index = function(tt, k)
+		local fn = function() end
+		rawset(tt, k, fn)
+		return fn
+	end })
+end
+
 _G.CreateFrame = function()
 	local f = { events = {} }
 	function f:RegisterEvent(e) self.events[e] = true end
 	function f:UnregisterEvent(e) self.events[e] = nil end
 	function f:SetScript(_, fn) self.onEvent = fn end
+	function f:CreateFontString() return uiNoop() end
 	stub.frames[#stub.frames + 1] = f
-	return f
+	return uiNoop(f)
 end
 
 _G.Enum = { ConsoleCommandType = { Cvar = 0, Command = 1 } }
@@ -208,6 +218,32 @@ _G.C_TTSSettings = {
 	SetSpeechVolume = function(v) stub.tts.volume = v end,
 	GetSetting = function(e) return stub.tts.bools[e] end,
 	SetSetting = function(e, v) stub.tts.bools[e] = v end,
+}
+
+-- 官方 Settings API 桩:NotifyUpdate 仿实机语义,带着注册表当前值回调监听器。
+-- 12.0.7 实机「officialSearch 项勾选框点不动」的根因就靠这个语义复现,别简化成 no-op。
+stub.addonSettings = {}
+_G.Settings = {
+	VarType = { Boolean = "Boolean" },
+	RegisterCanvasLayoutCategory = function(_, name) return { name = name } end,
+	RegisterVerticalLayoutCategory = function(name) return { name = name } end,
+	RegisterAddOnCategory = function() end,
+	RegisterAddOnSetting = function(_, variable, variableKey, variableTbl, _, _, _)
+		local s = {}
+		function s:GetValue() return variableTbl[variableKey] end
+		function s:SetValue(v)
+			variableTbl[variableKey] = v
+			if self._cb then self._cb(self) end
+		end
+		function s:SetValueChangedCallback(cb) self._cb = cb end
+		stub.addonSettings[variable] = s
+		return s
+	end,
+	CreateCheckbox = function() return { AddSearchTags = function() end } end,
+	NotifyUpdate = function(variable)
+		local s = stub.addonSettings[variable]
+		if s and s._cb then s._cb(s) end
+	end,
 }
 
 -- 聊天窗口域桩(v0.3)

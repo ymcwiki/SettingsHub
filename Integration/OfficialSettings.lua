@@ -28,11 +28,15 @@ end
 
 -- 精选策展子集注册进官方 vertical layout,AddSearchTags 中英同义词(P4 数据就位后生效)
 local variableByKey = {}
+-- 官方 setting 的值后备表。注意:RegisterAddOnSetting 的 setting 从这张表读值,
+-- 我们写管线改完 CVar 必须先同步这张表再 NotifyUpdate,否则官方 setting 会拿
+-- 注册时的旧值经 SetValueChangedCallback 反向写回,把用户的修改当场抵消
+-- (12.0.7 实机「officialSearch 项点不动」根因,回归测试见 tests/run.lua)
+local proxy = {}
 
 local function registerVerticalSubset()
 	if not (Settings.RegisterVerticalLayoutCategory and Settings.RegisterAddOnSetting) then return end
 	local category = Settings.RegisterVerticalLayoutCategory(L["SettingsHub Picks"])
-	local proxy = {}
 	local n = 0
 	for _, th in ipairs(ns.Data.themes or {}) do
 		for _, c in ipairs(th.controls) do
@@ -46,6 +50,7 @@ local function registerVerticalSubset()
 					local setting = Settings.RegisterAddOnSetting(category, variable, variable, proxy,
 						Settings.VarType.Boolean, c.key, info.default == "1")
 					setting:SetValueChangedCallback(function(s)
+						if M._notifying then return end
 						M._fromOfficial = true
 						ns.Engine:Set("cvar", c.key, s:GetValue() and "1" or "0", "user")
 						M._fromOfficial = false
@@ -76,6 +81,9 @@ function M:NotifyOfficial(key)
 	if self._fromOfficial then return end
 	local variable = variableByKey[key]
 	if variable and Settings and Settings.NotifyUpdate then
+		proxy[variable] = ns.Adapters.cvar:Read(key) == "1"
+		self._notifying = true
 		Settings.NotifyUpdate(variable)
+		self._notifying = false
 	end
 end

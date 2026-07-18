@@ -18,13 +18,14 @@ local FILES = {
 	"Data/Curated_J_Input.lua", "Data/Curated_K_QuestMap.lua",
 	"Data/Packs.lua", "Data/Guides.lua", "Data/Pinyin.lua", "Data/Exposed.lua",
 	"UI/Search.lua",
+	"Integration/OfficialSettings.lua",
 	"SelfTest.lua",
 }
 -- 纯 UI 文件无法在桩里执行,只做编译级语法检查
 local SYNTAX_ONLY = {
 	"UI/MainFrame.lua", "UI/DiscoverPage.lua", "UI/Browser.lua", "UI/Widgets.lua", "UI/ThemePage.lua",
 	"UI/PackPage.lua", "UI/ProfilePage.lua", "UI/SnapshotPage.lua", "UI/LogPage.lua",
-	"UI/MinimapButton.lua", "Integration/OfficialSettings.lua",
+	"UI/MinimapButton.lua",
 }
 for _, f in ipairs(FILES) do
 	local chunk = assert(loadfile(ROOT .. "/" .. f))
@@ -429,6 +430,21 @@ t("收藏:切换为未收藏", not ns.Favorites:Toggle("cameraZoomSpeed")
 	and not ns.Favorites:IsFavorite("cameraZoomSpeed"))
 ns.db.global.favorites["ghostCvarNotOnThisClient"] = nil
 t("收藏:清空后无命中", #ns.Search:Query("tag:favorite") == 0)
+
+-- 官方注册项回旋镖回归(12.0.7 实机根因):写管线成功后,NotifyOfficial 不得让
+-- 官方 setting 拿注册时缓存的旧值反向写回。受害集合 = officialSearch 全部 bool 项
+t("官方注册:精选子集已注册", (ns.Integration.registeredCount or 0) >= 5)
+local offBefore = C_CVar.GetCVar("ffxNether")
+E:Set("cvar", "ffxNether", "1", "user")
+t("官方注册项:写入不被旧值回写", C_CVar.GetCVar("ffxNether") == "1")
+t("官方注册项:期望态是新值", ns.db.profile.cvar["ffxNether"] == "1")
+t("官方注册项:官方面板显示同步", stub.addonSettings["SETTINGSHUB_graphics.ffxNether"] ~= nil
+	and stub.addonSettings["SETTINGSHUB_graphics.ffxNether"]:GetValue() == true)
+local offSetting = stub.addonSettings["SETTINGSHUB_graphics.ffxNether"]
+offSetting:SetValue(false)
+t("官方注册项:官方面板改值走写管线", C_CVar.GetCVar("ffxNether") == "0"
+	and ns.db.profile.cvar["ffxNether"] == "0")
+E:Set("cvar", "ffxNether", offBefore, "user")
 
 -- SelfTest 全流程(phase A 显式 relog 布置标记,phase B 普通 Run 也要完成收尾复原)
 local ok = ns.SelfTest:Run("relog")
