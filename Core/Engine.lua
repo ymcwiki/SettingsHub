@@ -20,8 +20,9 @@ local function pushEntry(entry)
 	log.head = log.head % RING_SIZE + 1
 end
 
+-- 监听器统一 Guard:单个页面回调出错不阻断写入,也不放过错误(记录+提示)
 function M:AddListener(fn)
-	self.listeners[fn] = true
+	self.listeners[ns.Guard(fn)] = true
 end
 
 function M:Notify(domain, key)

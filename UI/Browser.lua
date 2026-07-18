@@ -1,5 +1,6 @@
 local ADDON, ns = ...
 local L = ns.L
+local G = ns.Guard
 
 local ROW_H = 24
 local CAT_W = 110
@@ -65,7 +66,7 @@ local function openEditor(anchor, it)
 		editor = CreateFrame("EditBox", nil, UIParent, "InputBoxTemplate")
 		editor:SetSize(110, 20)
 		editor:SetAutoFocus(true)
-		editor:SetScript("OnEnterPressed", commitEdit)
+		editor:SetScript("OnEnterPressed", G(commitEdit))
 		editor:SetScript("OnEscapePressed", function(self) self.it = nil; self:Hide() end)
 		editor:SetScript("OnEditFocusLost", function(self) self.it = nil; self:Hide() end)
 	end
@@ -145,7 +146,7 @@ local function buildRow(row)
 	row.valueText = row.valueBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	row.valueText:SetPoint("LEFT")
 	row.valueText:SetJustifyH("LEFT")
-	row.valueBtn:SetScript("OnClick", function() openEditor(row.valueBtn, row.it) end)
+	row.valueBtn:SetScript("OnClick", G(function() openEditor(row.valueBtn, row.it) end))
 
 	row.default = row:CreateFontString(nil, "OVERLAY", "GameFontDisable")
 	row.default:SetPoint("LEFT", COL.default, 0)
@@ -164,9 +165,9 @@ local function buildRow(row)
 	hl:SetAllPoints()
 	hl:SetColorTexture(1, 1, 1, 0.06)
 
-	row:SetScript("OnClick", function(self, button)
+	row:SetScript("OnClick", G(function(self, button)
 		if button == "RightButton" then showRowMenu(self, self.it) end
-	end)
+	end))
 	row:SetScript("OnEnter", function(self) rowTooltip(self, self.it) end)
 	row:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end

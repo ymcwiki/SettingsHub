@@ -8,8 +8,8 @@
 ## P2 骨架 + 引擎
 
 - [ ] 加载无报错(scriptErrors 1 开着进游戏)
-- [ ] `/sh test`:枚举 ≥1,600、普通与 secure CVar 写/撤销/回默认六项全 PASS
-- [ ] 按提示重登,再跑 `/sh test`,第三组「重放存活」PASS
+- [ ] `/sh test`:枚举 ≥1,600、普通与 secure CVar 写/撤销/回默认六项全 PASS(只动测试值且立即复原)
+- [ ] `/sh test relog` 布置第三组标记,按提示重登再跑 `/sh test`,「重放存活」PASS 且测试值复原
 - [ ] `/console taintLog 2` + `/console addonCombatRestrictionsForced 1` 走一遍主流程,Logs/taint.log 无本插件条目
 
 ## P3 浏览器 + 搜索 + 信任 UI

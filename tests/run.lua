@@ -5,6 +5,7 @@ local stub = dofile(ROOT .. "/tests/wow_stub.lua")
 local ADDON, ns = "SettingsHub", {}
 local FILES = {
 	"Locales/Locale.lua", "Locales/zhCN.lua",
+	"Core/Guard.lua",
 	"Core/Bootstrap.lua", "Core/Enum.lua", "Core/CombatQueue.lua", "Core/Blame.lua",
 	"Adapters/Cvar.lua", "Adapters/Binding.lua", "Adapters/Macro.lua", "Adapters/EditMode.lua",
 	"Adapters/ClickBinding.lua", "Adapters/MuteSound.lua", "Adapters/TTS.lua", "Adapters/ConsoleExec.lua",
@@ -399,8 +400,8 @@ E:Set("cvar", "dummyCvar7", "0", "test")
 ns.db.profile.cvar["dummyCvar7"] = nil
 t("搜索:类别计数", ns.Search:CategoryCounts()[4] == CVAR_TOTAL)
 
--- SelfTest 全流程(phase A 布置跨重登标记,phase B 验证)
-local ok = ns.SelfTest:Run()
+-- SelfTest 全流程(phase A 显式 relog 布置标记,phase B 普通 Run 也要完成收尾复原)
+local ok = ns.SelfTest:Run("relog")
 t("SelfTest phase A:全部断言通过", ok)
 t("SelfTest phase A:标记已布置", ns.db.global.selftest ~= nil)
 local markerKey = ns.db.global.selftest.key
@@ -409,6 +410,8 @@ ok = ns.SelfTest:Run()
 t("SelfTest phase B:全部断言通过", ok)
 t("SelfTest phase B:标记清除且值复原", ns.db.global.selftest == nil
 	and C_CVar.GetCVar(markerKey) == markerOld)
+ns.SelfTest:Run()
+t("SelfTest:普通 Run 不布置重登标记", ns.db.global.selftest == nil)
 
 -- 12.0.7 兼容:AreCVarsLoaded 不存在时枚举照常;存在且返回 false 时才拒绝
 do
@@ -426,14 +429,18 @@ end
 
 -- diag:管线回环 OK、扫描零拒绝(桩里大量策展键不存在,missing 属预期)
 do
+	local headBefore = ns.db.global.undoLog.head
+	local zoomBefore = C_CVar.GetCVar("cameraZoomSpeed")
 	local dlines = ns.SelfTest:Diag()
-	local pipeOK, sweepLine = false, nil
+	local checksOK, sweepLine = false, nil
 	for _, l in ipairs(dlines) do
-		if l:find("pipeline=OK", 1, true) then pipeOK = true end
+		if l:find("checks=OK", 1, true) then checksOK = true end
 		if l:find("sweep:", 1, true) then sweepLine = l end
 	end
-	t("diag:管线回环 OK", pipeOK, dlines[3])
+	t("diag:只读体检 OK", checksOK, dlines[3])
 	t("diag:扫描零拒绝", sweepLine and sweepLine:find("rejected=0", 1, true) ~= nil, sweepLine)
+	t("diag:零改动(撤销环与值都没动)", ns.db.global.undoLog.head == headBefore
+		and C_CVar.GetCVar("cameraZoomSpeed") == zoomBefore)
 end
 
 -- dump
@@ -660,6 +667,18 @@ ns.Conflicts:StopManaging("dummyCvar30")
 t("冲突:停止管理清期望态与记录", ns.db.profile.cvar["dummyCvar30"] == nil
 	and #ns.Conflicts:List() == 0)
 E:Set("cvar", "dummyCvar30", "0", "test")
+
+-- v0.4.1 内部错误自检:坏监听器不阻断写入,错误进会话表与 SV 环并只提示一次
+do
+	local sBefore, pBefore = #ns.Errors.session, #ns.db.global.luaErrors
+	ns.Engine:AddListener(function() error("boom-selfcheck") end)
+	local r2 = E:Set("cvar", "dummyCvar61", "1", "test")
+	t("自检:坏监听器不阻断写入", r2 == "applied" and C_CVar.GetCVar("dummyCvar61") == "1")
+	t("自检:错误已记录(会话+持久)", #ns.Errors.session > sBefore and #ns.db.global.luaErrors > pBefore)
+	local e = ns.Errors.session[#ns.Errors.session]
+	t("自检:错误含消息与栈", e.msg:find("boom%-selfcheck") ~= nil and type(e.stack) == "string")
+	E:Set("cvar", "dummyCvar61", "0", "test")
+end
 
 print(string.format("== %s ==", fails == 0 and "ALL PASS" or (fails .. " FAILED")))
 if fails > 0 then error(fails .. " test(s) failed", 0) end

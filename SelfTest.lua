@@ -110,8 +110,9 @@ local function replaySurvival()
 	end
 end
 
-function M:Run()
+function M:Run(mode)
 	results = {}
+	ns.Print(L["Self-test touches test CVars only and restores them immediately"])
 
 	local ok, n = ns.Enum:Refresh()
 	check(string.format(L["enum: >=1600 (got %s)"], tostring(n)), ok and n >= 1600, not ok and n or nil)
@@ -131,7 +132,13 @@ function M:Run()
 		end
 	end
 
-	replaySurvival()
+	-- 第三组会临时改一项服务器存储值直到重登:有残留标记时无条件收尾复原,
+	-- 新布置只在显式 /sh test relog 时进行(不乱动用户配置的承诺)
+	if ns.db.global.selftest or mode == "relog" then
+		replaySurvival()
+	else
+		ns.Print(L["Third group (relog survival) is opt-in: /sh test relog stages one server-stored test value until you relog"])
+	end
 
 	return report()
 end
@@ -209,16 +216,27 @@ function M:Diag()
 		C_CVar.AreCVarsLoaded and tostring(C_CVar.AreCVarsLoaded()) or "MISSING",
 		rawCmds and tostring(#rawCmds) or "NO-API", matched)
 
-	-- 写管线回环:与勾选框同一条链路(少了鼠标事件层),错误全文捕获
+	-- 只读体检(diag 承诺零改动):不做写入回环,写管线实测放在 /sh test
 	local okPipe, errPipe = pcall(function()
-		local key = "cameraZoomSpeed"
-		local old = ns.Adapters.cvar:Read(key)
-		assert(old ~= nil, "cameraZoomSpeed unreadable")
-		local r, e = ns.Engine:Set("cvar", key, old == "20" and "21" or "20", "test")
-		assert(r == "applied", "Set=" .. tostring(r) .. " err=" .. tostring(e))
-		assert(ns.Engine:UndoLast() == "applied", "UndoLast failed")
+		assert(ns.db, "db not initialized")
+		assert(ns.db.global.undoLog and ns.db.global.undoLog.head, "undo ring missing")
+		assert(ns.Adapters.cvar:Read("cameraZoomSpeed") ~= nil, "cvar read failed")
+		assert(type(ns.Engine.Set) == "function" and type(ns.Engine.Undo) == "function", "engine incomplete")
 	end)
-	add("pipeline=%s%s", okPipe and "OK" or "ERROR", okPipe and "" or ("  " .. tostring(errPipe)))
+	add("checks=%s%s (read-only)", okPipe and "OK" or "ERROR", okPipe and "" or ("  " .. tostring(errPipe)))
+
+	-- 内部错误清单(Guard 捕获,跨 /reload 保留最近 20 条)
+	local persisted = ns.db and ns.db.global.luaErrors or {}
+	add("luaErrors: stored=%d session=%d", #persisted, #ns.Errors.session)
+	for i = math.max(1, #persisted - 2), #persisted do
+		local e = persisted[i]
+		if e then
+			add("  err %s  %s", date("%H:%M:%S", e.t), (e.msg:match("[^\n]+") or e.msg):sub(1, 140))
+			if e.stack and e.stack ~= "" then
+				add("      %s", (e.stack:match("[^\n]+") or ""):sub(1, 140))
+			end
+		end
+	end
 
 	-- 全策展项可写性扫描:把当前值原样写回,拒绝写入的记名(blame 有 _selfWriting 保护)
 	local rejected, missing, secureSkip, tested = {}, 0, 0, 0

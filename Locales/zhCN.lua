@@ -288,7 +288,10 @@ L["SettingsHub Picks"] = "SettingsHub 精选"
 L["Open SettingsHub"] = "打开 SettingsHub"
 L["In-game settings center: full CVar browser, themed panels, undo log and profiles. Official search only carries the curated subset; open the main window for everything."] = "游戏内设置中心:全量 CVar 浏览器、主题面板、撤销日志与 profile。官方搜索只收录精选注册项,完整功能请打开主窗口。"
 
--- 自测
+-- 自测与内部错误
+L["Internal error recorded: %s (details in /sh diag)"] = "内部错误已记录:%s(详情 /sh diag)"
+L["Self-test touches test CVars only and restores them immediately"] = "自测只动测试用 CVar 且立即复原"
+L["Third group (relog survival) is opt-in: /sh test relog stages one server-stored test value until you relog"] = "第三组(重登存活)需显式运行:/sh test relog 会临时改一项服务器存储的测试值直到你重登验证"
 L["Self-test done: %d passed / %d failed"] = "自测完成:%d 过 / %d 挂"
 L["Compliance reminder: re-run the main flows with /console taintLog 2 and addonCombatRestrictionsForced 1"] = "合规复查提醒:/console taintLog 2 与 addonCombatRestrictionsForced 1 开着再过一遍主流程"
 L[": exists"] = ":存在"

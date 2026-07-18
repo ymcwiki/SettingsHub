@@ -14,6 +14,7 @@ local defaults = {
 		loginCounter = 0,
 		tipsDismissed = {},
 		minimap = { angle = 220 },
+		luaErrors = {},
 		autoSwitch = {
 			-- 角色轴 = AceDB 内建 profileKeys + char.baseProfile,不在此表
 			scene = { enabled = false, map = {} },
@@ -44,7 +45,7 @@ ns.f:RegisterEvent("PLAYER_LOGOUT")
 ns.f:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 ns.f:RegisterEvent("DISPLAY_SIZE_CHANGED")
 
-ns.f:SetScript("OnEvent", function(_, event, ...)
+ns.f:SetScript("OnEvent", ns.Guard(function(_, event, ...)
 	if event == "ADDON_LOADED" then
 		if ... ~= ADDON then return end
 		ns.db = LibStub("AceDB-3.0"):New("SettingsHubDB", defaults, true)
@@ -73,14 +74,17 @@ ns.f:SetScript("OnEvent", function(_, event, ...)
 	elseif event == "PLAYER_REGEN_DISABLED" then
 		if ns.UI then ns.UI:SetCombatLock(true) end
 	end
-end)
+end))
 
 SLASH_SETTINGSHUB1 = "/settingshub"
 SLASH_SETTINGSHUB2 = "/sh"
-SlashCmdList.SETTINGSHUB = function(msg)
+SlashCmdList.SETTINGSHUB = ns.Guard(function(msg)
 	msg = (msg or ""):lower():match("^%s*(.-)%s*$")
 	if msg == "test" then
 		ns.SelfTest:Run()
+	elseif msg == "test relog" then
+		-- 第三组会临时改一项服务器存储值直到重登验证,显式命令才跑
+		ns.SelfTest:Run("relog")
 	elseif msg == "dump" then
 		ns.SelfTest:Dump()
 	elseif msg == "diag" then
@@ -98,7 +102,7 @@ SlashCmdList.SETTINGSHUB = function(msg)
 	else
 		ns.Print(ns.L["Usage: /sh [test|dump|undo|diag|probe]"])
 	end
-end
+end)
 
 function SettingsHub_OnAddonCompartmentClick()
 	if ns.UI then ns.UI:Toggle() end

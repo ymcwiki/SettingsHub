@@ -20,6 +20,7 @@ Libs\LibDeflate\LibDeflate.lua
 Locales\Locale.lua
 Locales\zhCN.lua
 
+Core\Guard.lua
 Core\Bootstrap.lua
 Core\Enum.lua
 Core\CombatQueue.lua

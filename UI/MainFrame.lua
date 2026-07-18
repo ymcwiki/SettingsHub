@@ -1,5 +1,6 @@
 local ADDON, ns = ...
 local L = ns.L
+local G = ns.Guard
 
 local M = { pages = {}, pageOrder = {}, combatLocked = false }
 ns.UI = M
@@ -81,9 +82,9 @@ local function buildFrame()
 	searchBox:SetSize(280, 22)
 	searchBox:SetPoint("TOPLEFT", title, "TOPRIGHT", 24, -2)
 	searchBox:SetAutoFocus(false)
-	searchBox:HookScript("OnTextChanged", function(box, userInput)
+	searchBox:HookScript("OnTextChanged", G(function(box, userInput)
 		if userInput then M:OnSearchChanged(box:GetText()) end
-	end)
+	end))
 
 	local hint = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	hint:SetPoint("LEFT", searchBox, "RIGHT", 10, 0)
@@ -116,7 +117,7 @@ local function buildFrame()
 		local hl = btn:CreateTexture(nil, "HIGHLIGHT")
 		hl:SetAllPoints()
 		hl:SetColorTexture(1, 1, 1, 0.08)
-		btn:SetScript("OnClick", function() selectPage(key) end)
+		btn:SetScript("OnClick", G(function() selectPage(key) end))
 		navButtons[key] = btn
 		y = y - 24
 	end

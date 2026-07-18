@@ -1,5 +1,6 @@
 local ADDON, ns = ...
 local L = ns.L
+local G = ns.Guard
 
 local W = {}
 ns.Widgets = W
@@ -75,7 +76,7 @@ local function controlTooltip(owner, control)
 end
 
 local function attachTooltip(f, control)
-	f:SetScript("OnEnter", function(self) controlTooltip(self, control) end)
+	f:SetScript("OnEnter", G(function(self) controlTooltip(self, control) end))
 	f:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
@@ -126,9 +127,9 @@ function builders.bool(parent, control)
 	f.check = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
 	f.check:SetSize(24, 24)
 	f.check:SetPoint("LEFT", CTRL_X, 0)
-	f.check:SetScript("OnClick", function(self)
+	f.check:SetScript("OnClick", G(function(self)
 		setValue(control, self:GetChecked() and "1" or "0")
-	end)
+	end))
 	attachTooltip(f.check, control)
 	function f:Update()
 		local locked = markModified(self, control)
@@ -145,10 +146,10 @@ local function editBuilder(parent, control)
 	f.edit:SetSize(96, 20)
 	f.edit:SetPoint("LEFT", CTRL_X + 4, 0)
 	f.edit:SetAutoFocus(false)
-	f.edit:SetScript("OnEnterPressed", function(self)
+	f.edit:SetScript("OnEnterPressed", G(function(self)
 		setValue(control, self:GetText())
 		self:ClearFocus()
-	end)
+	end))
 	f.edit:SetScript("OnEscapePressed", function(self)
 		self:SetText(trimNum(curValue(control)))
 		self:ClearFocus()
@@ -190,10 +191,10 @@ local function sliderBuilder(parent, control)
 	f.edit:SetSize(56, 20)
 	f.edit:SetPoint("LEFT", f.slider, "RIGHT", 14, 0)
 	f.edit:SetAutoFocus(false)
-	f.edit:SetScript("OnEnterPressed", function(self)
+	f.edit:SetScript("OnEnterPressed", G(function(self)
 		setValue(control, self:GetText())
 		self:ClearFocus()
-	end)
+	end))
 	f.edit:SetScript("OnEscapePressed", function(self)
 		self:SetText(trimNum(curValue(control)))
 		self:ClearFocus()
@@ -204,9 +205,9 @@ local function sliderBuilder(parent, control)
 			f.edit:SetText(trimNum(v))
 		end
 	end)
-	f.slider:SetScript("OnMouseUp", function(self)
+	f.slider:SetScript("OnMouseUp", G(function(self)
 		setValue(control, trimNum(self:GetValue()))
-	end)
+	end))
 	attachTooltip(f.slider, control)
 	function f:Update()
 		local locked = markModified(self, control)
@@ -245,7 +246,7 @@ function builders.enum(parent, control)
 			for _, v in ipairs(control.values) do
 				root:CreateRadio(display(v),
 					function() return tostring(curValue(control)) == tostring(v) end,
-					function() setValue(control, v) end)
+					G(function() setValue(control, v) end))
 			end
 		end)
 		function f:Update()
@@ -259,14 +260,14 @@ function builders.enum(parent, control)
 		f.btn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
 		f.btn:SetSize(110, 22)
 		f.btn:SetPoint("LEFT", CTRL_X, 0)
-		f.btn:SetScript("OnClick", function()
+		f.btn:SetScript("OnClick", G(function()
 			local cur = tostring(curValue(control) or control.values[1])
 			local idx = 1
 			for i, v in ipairs(control.values) do
 				if tostring(v) == cur then idx = i break end
 			end
 			setValue(control, control.values[idx % #control.values + 1])
-		end)
+		end))
 		function f:Update()
 			local locked = markModified(self, control)
 			f.btn:SetText(display(curValue(control) or "?"))
@@ -293,7 +294,7 @@ function builders.action(parent, control)
 	f.btn:SetSize(150, 24)
 	f.btn:SetPoint("LEFT", CTRL_X, 0)
 	f.btn:SetText(control.buttonText and L[control.buttonText] or L["Run"])
-	f.btn:SetScript("OnClick", function()
+	f.btn:SetScript("OnClick", G(function()
 		if control.confirm then
 			StaticPopup_Show("SETTINGSHUB_ACTION_CONFIRM",
 				control.buttonText and L[control.buttonText] or control.id, nil, control.run)
@@ -301,7 +302,7 @@ function builders.action(parent, control)
 			if ns.Actions[control.run] then ns.Actions[control.run]() end
 			ns.UI:Refresh()
 		end
-	end)
+	end))
 	attachTooltip(f.btn, control)
 	function f:Update()
 		markModified(self, control)
