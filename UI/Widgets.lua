@@ -61,6 +61,9 @@ local function controlTooltip(owner, control)
 	if control.noReadback then
 		GameTooltip:AddLine(L["No readback: recorded as desired state and replayed at login"], 1, 0.6, 0.3, true)
 	end
+	if control.secure then
+		GameTooltip:AddLine(L["Combat-locked: the client blocks changes in combat, writes queue until combat ends"], 1, 0.4, 0.4, true)
+	end
 	if control.requiresReload then GameTooltip:AddLine(L["Takes effect after /reload"], 1, 0.8, 0, true) end
 	if control.requiresRestart then GameTooltip:AddLine(L["Takes effect after a game restart"], 1, 0.6, 0, true) end
 	local v = control.version
