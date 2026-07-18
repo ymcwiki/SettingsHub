@@ -283,12 +283,27 @@ E:Set("cvar", "cameraZoomSpeed", "1", "test")
 t("blame:自写不覆盖", ns.db.global.blame["cameraZoomSpeed"].by == "EvilAddon")
 
 -- P5 非 CVar 域适配器
+local stubConsoleExec = ConsoleExec
+ConsoleExec = function(cmd)
+	stubConsoleExec(cmd)
+	return true
+end
 r = E:Set("consoleexec", "actioncam", "full", "user")
 t("consoleexec:applied 且期望态记录", r == "applied" and ns.db.profile.consoleexec.actioncam == "full")
 t("consoleexec:命令已执行", stub.consoleLog[#stub.consoleLog] == "actioncam full")
 local ceLogs = #stub.consoleLog
 ns.Adapters.consoleexec:ReplayAll()
 t("consoleexec:登录重放执行", #stub.consoleLog == ceLogs + 1)
+ns.db.profile.consoleexec.actioncam = nil
+local acceptingConsoleExec = ConsoleExec
+ConsoleExec = function(cmd)
+	stubConsoleExec(cmd)
+	return false
+end
+local rejectedResult, rejectedErr = E:Set("consoleexec", "actioncam", "full", "user")
+t("consoleexec:客户端拒绝不写期望态", rejectedResult == "failed" and rejectedErr == "console-rejected"
+	and ns.db.profile.consoleexec.actioncam == nil)
+ConsoleExec = acceptingConsoleExec
 
 E:Set("mutesound", "569593", "1", "user")
 t("mutesound:静音生效且入列表", stub.muted[569593] == true and #ns.db.profile.mutesound == 1)
@@ -356,6 +371,32 @@ local payload, perr = ns.Profiles:Decode(exported)
 t("profile:解码回环", payload ~= nil and payload.data.cvar.dummyCvar9 == "1"
 	and payload.data.tts ~= nil, perr)
 t("profile:坏串有错误信息", (select(2, ns.Profiles:Decode("garbage"))) ~= nil)
+local LibSerialize = LibStub("LibSerialize")
+local LibDeflate = LibStub("LibDeflate")
+local function encodeImport(value, suffix)
+	local serialized = LibSerialize:Serialize(value)
+	local compressed = LibDeflate:CompressDeflate(serialized) .. (suffix or "")
+	return "!SH1!" .. LibDeflate:EncodeForPrint(compressed)
+end
+local function decodeRejected(value)
+	local decoded, err = ns.Profiles:Decode(value)
+	return decoded == nil and type(err) == "string" and err ~= ""
+end
+t("profile:schema 拒绝缺 data", decodeRejected(encodeImport({ v = 1 })))
+t("profile:schema 拒绝畸形 cvar 值", decodeRejected(encodeImport({
+		v = 1, data = { cvar = { cameraZoomSpeed = {} } },
+	})))
+local tooManyEntries = {}
+for i = 1, 50001 do tooManyEntries[i] = true end
+t("profile:schema 拒绝超条目上限", decodeRejected(encodeImport({
+		v = 1, data = { mutesound = tooManyEntries },
+	})))
+t("profile:拒绝 deflate 尾随字节", decodeRejected(encodeImport({ v = 1, data = {} }, "x")))
+local oversizedCompressed = LibDeflate:EncodeForPrint(string.rep("x", 256 * 1024 + 1))
+t("profile:拒绝超上限压缩数据", decodeRejected("!SH1!" .. oversizedCompressed))
+t("profile:拒绝超上限解压数据", decodeRejected(encodeImport({
+		v = 1, data = { binding = { blob = string.rep("x", 2 * 1024 * 1024) } },
+	})))
 E:Set("cvar", "dummyCvar9", "0", "test")
 stub.tts.rate = 9
 local changes, bulkList = ns.Profiles:DiffAgainstCurrent(payload)
@@ -365,6 +406,33 @@ t("profile:导入应用一致", C_CVar.GetCVar("dummyCvar9") == "1" and stub.tts
 E:Set("cvar", "dummyCvar9", "0", "test")
 ns.db.profile.cvar.dummyCvar9 = nil
 ns.db.profile.domains.tts = nil
+
+local badConsoleKey = "__settingshub_not_allowlisted__"
+local consoleBefore, failuresBefore = #stub.consoleLog, #E.failures
+local _, consoleFailed, consoleSkipped = ns.Profiles:ApplyImport({
+	v = 1, data = { consoleexec = { [badConsoleKey] = "1" } },
+})
+t("profile:导入跳过非白名单 console", consoleFailed == 0 and consoleSkipped == 1
+	and ns.db.profile.consoleexec[badConsoleKey] == nil and #stub.consoleLog == consoleBefore
+	and #E.failures == failuresBefore)
+ns.db.profile.consoleexec[badConsoleKey] = "1"
+consoleBefore = #stub.consoleLog
+local replayed = ns.Adapters.consoleexec:ReplayAll()
+t("consoleexec:登录重放跳过损坏 SV 非白名单键", replayed == 0 and #stub.consoleLog == consoleBefore)
+ns.db.profile.consoleexec[badConsoleKey] = nil
+
+local unknownCvar = "__settingshub_missing_cvar__"
+local _, _, unavailable = ns.Profiles:DiffAgainstCurrent({
+	v = 1, data = { cvar = { [unknownCvar] = "1", lockedCvar = "9" } },
+})
+t("profile:diff 未知与只读 CVar 统一计未知", unavailable == 2)
+failuresBefore = #E.failures
+local _, cvarFailed, cvarSkipped = ns.Profiles:ApplyImport({
+	v = 1, data = { cvar = { [unknownCvar] = "1", lockedCvar = "9" } },
+})
+t("profile:导入真跳过未知与只读 CVar", cvarFailed == 0 and cvarSkipped == 2
+	and ns.db.profile.cvar[unknownCvar] == nil and ns.db.profile.cvar.lockedCvar == nil
+	and ns.db.global.baseline["cvar:" .. unknownCvar] == nil and #E.failures == failuresBefore)
 
 -- P6 四轴:场景轴切换与回落
 ns.db.global.autoSwitch.scene.enabled = true
