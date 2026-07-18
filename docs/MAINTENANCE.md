@@ -29,8 +29,12 @@
 
 ## 发布流程
 
-1. 更新 CHANGELOG.md
-2. `git tag v<版本>` 并推送 tag,GitHub Actions 自动跑 BigWigs packager v2,
+无游戏环境时先按 `docs/TESTING.md` 跑自动检查；实机项目不得因为 CI 通过而标记为已验证。
+
+1. 更新 CHANGELOG.md,本地运行 `python3 tests/run_headless.py` 与
+   `python3 scripts/package.py smoke`;后者会检查 zip 根目录、开发文件泄漏和版本号替换
+2. `git tag v<版本>` 并推送 tag,GitHub Actions 先在 Windows/Linux 跑无头测试,
+   全部通过后才启动 BigWigs packager v2,
    产物发 GitHub Release + CurseForge + Wago + WoWInterface
 3. 仓库 secrets 需要:`CF_API_KEY`、`WAGO_API_TOKEN`、`WOWI_API_TOKEN`(GITHUB_TOKEN 自带);
    TOC 里 `X-Curse-Project-ID` / `X-Wago-ID` / `X-WoWI-ID` 首次在各平台建项目后填入

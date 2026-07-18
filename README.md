@@ -54,7 +54,7 @@
 
 ## 开发
 
-- 无头测试:`python3 tests/run_headless.py`(需 `pip install lupa`,用 Lua 5.1 运行时跑全部引擎断言,不需要游戏客户端)
+- 无头测试:`python3 -m pip install -r requirements-dev.txt` 后运行 `python3 tests/run_headless.py`(用 Lua 5.1 运行时跑全部引擎断言,不需要游戏客户端;Windows/Linux 均由 CI 验证)
 - 元数据管线:游戏内 `/sh dump` 后跑 `scripts/dump_diff.py <SV路径>` 产出 review 队列;`scripts/wiki_apichanges.py 12.1.0` 抓 wiki 变更底稿;流程见 docs/MAINTENANCE.md
 - 发布:推 `v*` tag,GitHub Actions 经 BigWigs packager 发 CurseForge/Wago/WoWInterface(需配置对应 secrets)
 
@@ -62,5 +62,6 @@
 
 - docs/SPEC.md 产品规格(功能与验收标准)
 - docs/ARCH.md 架构设计(数据模型/适配器/写管线/SV schema)
+- docs/TESTING.md 无游戏环境的自动测试范围与实机边界
 - docs/VERIFIED.md 实机验证台账(哪些结论还没验证、怎么验证)
 - docs/MAINTENANCE.md 每补丁维护五步(预算:小补丁 4 小时内)
