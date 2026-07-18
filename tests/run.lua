@@ -230,13 +230,38 @@ r = E:UndoLast()
 t("环形日志:回绕后仍可撤销", r == "applied")
 
 -- 全量还原
-local n, failedN = E:RestoreAll("uninstall")
-t("全量还原:无失败", failedN == 0, failedN)
+local n, queuedN, failedN = E:RestoreAll("uninstall")
+t("全量还原:无排队或失败", queuedN == 0 and failedN == 0, tostring(queuedN) .. "/" .. tostring(failedN))
 t("全量还原:值回首触原值", C_CVar.GetCVar("cameraZoomSpeed") == "1"
 	and C_CVar.GetCVar("nameplateMaxDistance") == "60"
 	and C_CVar.GetCVar("rawMouseEnable") == "0")
 t("全量还原:baseline 清空", next(ns.db.global.baseline) == nil)
 t("全量还原:期望态清空", next(ns.db.profile.cvar) == nil)
+
+-- 全量还原/回默认只提交 applied 项,失败项保留恢复依据与期望态
+E:Set("cvar", "dummyCvar70", "1", "user")
+ns.db.global.baseline["cvar:lockedCvar"] = "5"
+ns.db.profile.cvar.lockedCvar = "9"
+local restoreApplied, restoreQueued, restoreFailed = E:RestoreAll("uninstall")
+t("全量还原:混合结果三元计数", restoreApplied == 1 and restoreQueued == 0 and restoreFailed == 1)
+t("全量还原:applied 键清恢复依据与期望态", ns.db.global.baseline["cvar:dummyCvar70"] == nil
+	and ns.db.profile.cvar.dummyCvar70 == nil and C_CVar.GetCVar("dummyCvar70") == "0")
+t("全量还原:failed 键保留恢复依据与期望态", ns.db.global.baseline["cvar:lockedCvar"] == "5"
+	and ns.db.profile.cvar.lockedCvar == "9" and C_CVar.GetCVar("lockedCvar") == "5")
+ns.db.global.baseline["cvar:lockedCvar"] = nil
+ns.db.profile.cvar.lockedCvar = nil
+
+E:Set("cvar", "dummyCvar71", "1", "user")
+ns.db.global.baseline["cvar:lockedCvar"] = "5"
+ns.db.profile.cvar.lockedCvar = "9"
+local resetApplied, resetQueued, resetFailed = E:ResetAllToDefault()
+t("全量回默认:混合结果三元计数", resetApplied == 1 and resetQueued == 0 and resetFailed == 1)
+t("全量回默认:applied 键清恢复依据与期望态", ns.db.global.baseline["cvar:dummyCvar71"] == nil
+	and ns.db.profile.cvar.dummyCvar71 == nil and C_CVar.GetCVar("dummyCvar71") == "0")
+t("全量回默认:failed 键保留恢复依据与期望态", ns.db.global.baseline["cvar:lockedCvar"] == "5"
+	and ns.db.profile.cvar.lockedCvar == "9" and C_CVar.GetCVar("lockedCvar") == "5")
+ns.db.global.baseline["cvar:lockedCvar"] = nil
+ns.db.profile.cvar.lockedCvar = nil
 
 -- 重放断言
 ns.db.profile.cvar["rawMouseEnable"] = "1"
@@ -382,8 +407,10 @@ do
 end
 t("四轴:切换留下整域快照", bulkEntry ~= nil and bulkEntry.old.dummyCvar11 == "1")
 E:Set("cvar", "dummyCvar11", "0", "test")
+ns.db.profile.cvar.dummyCvar11 = "0"
 r = E:Undo(bulkEntry)
 t("四轴:整域快照可撤销", r == "applied" and C_CVar.GetCVar("dummyCvar11") == "1")
+t("四轴:整域撤销不改目标 profile 期望态", ns.db.profile.cvar.dummyCvar11 == "0")
 ns.db.profile.cvar.dummyCvar11 = nil
 E:Set("cvar", "dummyCvar11", "0", "test")
 
@@ -697,6 +724,16 @@ t("试穿:转常驻记入期望态", C_CVar.GetCVar("dummyCvar50") == "8"
 ns.db.global.trial = { label = "stale", expires = time() - 60, revert = { dummyCvar50 = "5" } }
 ns.Trial:Arm()
 t("试穿:过期残留登录即还原", C_CVar.GetCVar("dummyCvar50") == "5" and ns.Trial:Active() == nil)
+
+ns.Trial:Start({ { key = "dummyCvar50", value = "9" } }, 10, "retry")
+stub.registry.dummyCvar50.readonly = true
+local failedRevertN = ns.Trial:Revert("manual")
+t("试穿:还原失败保留 trial 与恢复键", failedRevertN == 0 and ns.Trial:Active() ~= nil
+	and ns.Trial:Active().revert.dummyCvar50 == "5" and C_CVar.GetCVar("dummyCvar50") == "9")
+stub.registry.dummyCvar50.readonly = false
+local retriedRevertN = ns.Trial:Revert("retry")
+t("试穿:重试全成功后清 trial", retriedRevertN == 1 and C_CVar.GetCVar("dummyCvar50") == "5"
+	and ns.Trial:Active() == nil)
 E:Set("cvar", "dummyCvar50", "0", "test")
 ns.db.profile.cvar["dummyCvar50"] = nil
 

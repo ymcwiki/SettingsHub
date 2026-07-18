@@ -9,8 +9,9 @@ StaticPopupDialogs["SETTINGSHUB_RESTORE_BASELINE"] = {
 	text = L["Restore all %d values this addon has changed to their pre-change originals?"],
 	button1 = YES, button2 = NO,
 	OnAccept = function()
-		local n, failed = ns.Engine:RestoreAll("restore")
+		local n, queued, failed = ns.Engine:RestoreAll("restore")
 		ns.Print(string.format(L["Restored %d values, %d failed"], n, failed))
+		if queued > 0 then ns.Print(string.format(L["%d queued in combat"], queued)) end
 		ns.UI:Refresh()
 	end,
 	timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
@@ -20,8 +21,9 @@ StaticPopupDialogs["SETTINGSHUB_RESET_DEFAULTS"] = {
 	text = L["Reset all %d values this addon has changed to Blizzard defaults? Your current settings will be lost."],
 	button1 = YES, button2 = NO,
 	OnAccept = function()
-		local n, failed = ns.Engine:ResetAllToDefault()
+		local n, queued, failed = ns.Engine:ResetAllToDefault()
 		ns.Print(string.format(L["Reset %d values to default, %d failed"], n, failed))
+		if queued > 0 then ns.Print(string.format(L["%d queued in combat"], queued)) end
 		ns.UI:Refresh()
 	end,
 	timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,

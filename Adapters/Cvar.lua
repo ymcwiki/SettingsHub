@@ -27,9 +27,10 @@ function M:Serialize()
 	return out
 end
 
-function M:Restore(snapshot)
+function M:Restore(snapshot, source)
+	source = source or "import"
 	for k, v in pairs(snapshot) do
-		ns.Engine:Set("cvar", k, v, "import")
+		ns.Engine:Set("cvar", k, v, source)
 	end
 end
 
