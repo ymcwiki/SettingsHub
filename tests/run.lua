@@ -16,7 +16,7 @@ local FILES = {
 	"Data/Curated_D_CombatText.lua", "Data/Curated_E_QoL.lua", "Data/Curated_F_Graphics.lua",
 	"Data/Curated_G_Sound.lua", "Data/Curated_H_Dev.lua", "Data/Curated_I_Chat.lua",
 	"Data/Curated_J_Input.lua", "Data/Curated_K_QuestMap.lua",
-	"Data/Packs.lua", "Data/Guides.lua", "Data/Pinyin.lua", "Data/Exposed.lua",
+	"Data/Packs.lua", "Data/Guides.lua", "Data/Pinyin.lua", "Data/Encyclopedia.lua", "Data/Exposed.lua",
 	"UI/Search.lua",
 	"Integration/OfficialSettings.lua",
 	"SelfTest.lua",
@@ -40,6 +40,12 @@ stub.addCvar("lockedCvar", { value = "5", default = "5", readonly = true })
 stub.addCvar("alwaysCompareItems", { value = "0", default = "0", sAcc = true })
 stub.addCvar("autoLootDefault", { value = "0", default = "0", sChar = true })
 stub.addCvar("reloadui", { commandType = 1 })
+local encyclopediaCount, encyclopediaKey, encyclopediaEntry = 0
+for key, entry in pairs(ns.Data.encyclopedia or {}) do
+	encyclopediaCount = encyclopediaCount + 1
+	if not encyclopediaKey then encyclopediaKey, encyclopediaEntry = key, entry end
+end
+if encyclopediaKey then stub.addCvar(encyclopediaKey, { value = "0", default = "0" }) end
 -- v0.3 推荐包引用的策展键(应用测试要真实写入)
 for _, name in ipairs({
 	"AdvFlyingDynamicFOVEnabled", "DriveDynamicFOVEnabled", "test_cameraDynamicPitch",
@@ -388,6 +394,16 @@ end
 
 -- 搜索索引与过滤词
 ns.Search:Rebuild()
+t("百科:词典层数据存在且条数 >= 1000", encyclopediaCount >= 1000, encyclopediaCount)
+t("百科:策展键不在词典层", ns.Data.encyclopedia.cameraZoomSpeed == nil)
+local encyclopediaZhPair = encyclopediaEntry and encyclopediaEntry.zh
+	and encyclopediaEntry.zh:match("([\228-\233][\128-\191][\128-\191][\228-\233][\128-\191][\128-\191])")
+local encyclopediaHits = encyclopediaZhPair and ns.Search:Query(encyclopediaZhPair) or {}
+local encyclopediaFound = false
+for _, it in ipairs(encyclopediaHits) do
+	if it.key == encyclopediaKey then encyclopediaFound = true break end
+end
+t("百科:中文文案连续两字可搜索命中", encyclopediaFound, encyclopediaKey)
 t("搜索:索引条数", #ns.Search.items == CVAR_TOTAL, #ns.Search.items)
 t("搜索:精确命中", #ns.Search:Query("camerazoomspeed") == 1)
 t("搜索:多词 AND", #ns.Search:Query("camera zoom speed") == 1, #ns.Search:Query("camera zoom speed"))
