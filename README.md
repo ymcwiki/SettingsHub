@@ -65,3 +65,8 @@
 - docs/TESTING.md 无游戏环境的自动测试范围与实机边界
 - docs/VERIFIED.md 实机验证台账(哪些结论还没验证、怎么验证)
 - docs/MAINTENANCE.md 每补丁维护五步(预算:小补丁 4 小时内)
+
+## 反馈与许可
+
+- 报 bug 或提建议走 [GitHub Issues](https://github.com/ymcwiki/SettingsHub/issues);报 bug 时游戏内跑一次 `/sh diag`(只读,不改设置)把弹窗文本贴进来,大多数问题一份 diag 就够定位
+- 许可证:MIT(见 LICENSE)
