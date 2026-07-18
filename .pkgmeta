@@ -16,10 +16,12 @@ externals:
     tag: Release-r1390
   Libs/LibSerialize:
     url: https://github.com/rossnichols/LibSerialize
-    tag: v1.2.2
+    commit: e89d505
   Libs/LibDeflate:
+    # 别钉 1.0.2-release tag:那个旧 tag 缺自身 .pkgmeta 忽略规则,
+    # 会把 ldoc HTML 文档和 rockspec 打进插件包(CF 审核拒过)
     url: https://github.com/SafeteeWoW/LibDeflate
-    tag: 1.0.2-release
+    commit: afc3b78
 
 ignore:
   - docs
