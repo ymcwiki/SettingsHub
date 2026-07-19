@@ -95,7 +95,7 @@ local function buildFrame()
 	local close = Style.CloseButton(frame)
 	close:SetPoint("RIGHT", titleBar, "RIGHT", -Style.TitleInset, 0)
 
-	searchBox = Style.SearchBox(frame, "搜索 / Search")
+	searchBox = Style.SearchBox(frame, L["Search"])
 	searchBox:SetPoint("LEFT", title, "RIGHT", 24, 0)
 	searchBox:HookScript("OnTextChanged", G(function(box, userInput)
 		if userInput then M:OnSearchChanged(box:GetText()) end

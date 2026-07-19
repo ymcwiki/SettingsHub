@@ -1,6 +1,12 @@
 package-as: SettingsHub
 enable-nolib-creation: no
 
+# release notes 与包内 changelog 一律用手写 CHANGELOG.md,
+# 不让 packager 从 git log 生成(commit 尾注不该出现在发布说明里)
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
 # 外部库固定版本(可复现打包)。注意:BigWigs packager 对 svn 只支持
 # tags/ 目录名(tag:),不支持按 revision 钉(commit: 会被当 tag 拉 tags/<N> 直接 404)。
 # 升级流程:改这里的版本号 → 本地同步 Libs/ → 跑无头测试 → 提交。

@@ -9,6 +9,8 @@ local L = ns.L
 
 -- 主窗口与导航
 L["All Settings"] = "全部设置"
+L["Search"] = "搜索"
+L["Write tests moved to headless CI; in-game self test is read-only"] = "写入测试已移至自动化流程,游戏内自测只读"
 L["Profiles & Migration"] = "Profile 与迁移"
 L["Snapshots"] = "快照"
 L["Log & Restore"] = "日志与还原"
