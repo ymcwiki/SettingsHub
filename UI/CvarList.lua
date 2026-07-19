@@ -172,6 +172,7 @@ end
 
 local function buildRow(row)
 	row.built = true
+	Style.ListRow(row, false)
 	row:RegisterForClicks("RightButtonUp")
 	row.star = CreateFrame("Button", nil, row)
 	row.star:SetSize(Style.FavoriteButtonSize, Style.FavoriteButtonSize)
@@ -195,6 +196,7 @@ local function buildRow(row)
 	row.name:SetWidth(COL.value - COL.name - Style.ListNameInset - Style.ListColumnGap)
 	row.name:SetJustifyH("LEFT")
 	row.name:SetWordWrap(false)
+	color(row.name, "SetTextColor", C.PrimaryText)
 
 	row.valueBtn = CreateFrame("Button", nil, row)
 	row.valueBtn:SetPoint("LEFT", COL.value, 0)
@@ -211,6 +213,7 @@ local function buildRow(row)
 	row.default:SetWidth(COL.scope - COL.default - Style.ListColumnGap)
 	row.default:SetJustifyH("LEFT")
 	row.default:SetWordWrap(false)
+	color(row.default, "SetTextColor", C.SecondaryText)
 
 	row.scope = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	row.scope:SetPoint("LEFT", COL.scope, 0)
@@ -219,9 +222,8 @@ local function buildRow(row)
 	row.flags:SetPoint("LEFT", COL.flags, 0)
 	row.flags:SetJustifyH("LEFT")
 
-	local highlight = row:CreateTexture(nil, "HIGHLIGHT")
+	local highlight = Style.Fill(row, "HIGHLIGHT", C.RowHover)
 	highlight:SetAllPoints()
-	color(highlight, "SetColorTexture", C.RowHover)
 
 	row:SetScript("OnClick", G(function(self, button)
 		if button == "RightButton" and self.it then showRowMenu(self, self.it) end
@@ -232,8 +234,9 @@ local function buildRow(row)
 	row:SetScript("OnLeave", G(function() GameTooltip:Hide() end))
 end
 
-local function updateRow(row, it)
+local function updateRow(row, it, even)
 	row.it = it
+	Style.ListRow(row, even)
 	local favorite = ns.Favorites:IsFavorite(it.key)
 	row.star.text:SetText(favorite and "★" or "☆")
 	color(row.star.text, "SetTextColor", favorite and C.Favorite or C.Unfavorite)
@@ -252,6 +255,7 @@ end
 
 function ns.UI.CreateCvarList(parent, getFilter)
 	local list = CreateFrame("Frame", nil, parent)
+	list.rowParity = {}
 
 	local header = CreateFrame("Frame", nil, list)
 	header:SetPoint("TOPLEFT", 0, 0)
@@ -261,12 +265,17 @@ function ns.UI.CreateCvarList(parent, getFilter)
 		local fs = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 		fs:SetPoint("LEFT", x, 0)
 		fs:SetText(text)
+		color(fs, "SetTextColor", C.SecondaryText)
 	end
 	headCol(L["Name"], COL.name + Style.ListNameInset)
 	headCol(L["Current (click to edit)"], COL.value)
 	headCol(L["Default"], COL.default)
 	headCol(L["Scope"], COL.scope)
 	headCol(L["Flags"], COL.flags)
+	local headerLine = Style.Fill(header, "ARTWORK", C.Separator)
+	headerLine:SetPoint("BOTTOMLEFT")
+	headerLine:SetPoint("BOTTOMRIGHT")
+	headerLine:SetHeight(Style.SeparatorHeight)
 
 	list.scrollBox = CreateFrame("Frame", nil, list, "WowScrollBoxList")
 	list.scrollBox:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -2)
@@ -279,7 +288,7 @@ function ns.UI.CreateCvarList(parent, getFilter)
 	view:SetElementExtent(Style.ListRowHeight)
 	view:SetElementInitializer("Button", function(row, it)
 		if not row.built then buildRow(row) end
-		updateRow(row, it)
+		updateRow(row, it, list.rowParity[it])
 	end)
 	ScrollUtil.InitScrollBoxListWithScrollBar(list.scrollBox, list.scrollBar, view)
 
@@ -287,13 +296,15 @@ function ns.UI.CreateCvarList(parent, getFilter)
 		local searchText, category = getFilter()
 		local results = ns.Search:Query(searchText or "", category)
 		self.resultCount = #results
+		wipe(self.rowParity)
+		for i, it in ipairs(results) do self.rowParity[it] = i % 2 == 0 end
 		self.scrollBox:SetDataProvider(CreateDataProvider(results), ScrollBoxConstants.RetainScrollPosition)
 		if self.OnResultsChanged then self:OnResultsChanged(self.resultCount) end
 	end
 
 	function list:UpdateRows()
 		self.scrollBox:ForEachFrame(function(row)
-			if row.it then updateRow(row, row.it) end
+			if row.it then updateRow(row, row.it, self.rowParity[row.it]) end
 		end)
 	end
 

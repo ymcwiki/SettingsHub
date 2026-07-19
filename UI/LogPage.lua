@@ -1,5 +1,6 @@
 local ADDON, ns = ...
 local L = ns.L
+local Style = ns.Style
 
 local ROW_H = 22
 local RING_SIZE = 500
@@ -63,10 +64,8 @@ local function buildRow(row)
 	row.change:SetWidth(240)
 	row.change:SetJustifyH("LEFT")
 	row.change:SetWordWrap(false)
-	row.undoBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-	row.undoBtn:SetSize(56, 18)
+	row.undoBtn = ns.UI.Button(row, L["Undo"], 56, 18)
 	row.undoBtn:SetPoint("RIGHT", -4, 0)
-	row.undoBtn:SetText(L["Undo"])
 	row.undoBtn:SetScript("OnClick", function()
 		if row.entry then
 			ns.Engine:Undo(row.entry)
@@ -86,9 +85,9 @@ local function updateRow(row, e)
 		row.change:SetFormattedText(L["%s changed to %s"], tostring(e.old), tostring(e.new))
 	end
 	if e.failed then
-		row.change:SetTextColor(1, 0.3, 0.3)
+		Style.SetColor(row.change, "SetTextColor", Style.Colors.Error)
 	else
-		row.change:SetTextColor(0.9, 0.9, 0.9)
+		Style.SetColor(row.change, "SetTextColor", Style.Colors.PrimaryText)
 	end
 	local canUndo = not e.failed and not e.undone and e.source ~= "undo"
 	row.undoBtn:SetShown(canUndo)
@@ -98,19 +97,15 @@ end
 local function build(parent)
 	local page = CreateFrame("Frame", nil, parent)
 
-	local undoLast = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-	undoLast:SetSize(120, 22)
+	local undoLast = ns.UI.Button(page, L["Undo last"], 120, 22, true)
 	undoLast:SetPoint("TOPLEFT", 0, 0)
-	undoLast:SetText(L["Undo last"])
 	undoLast:SetScript("OnClick", function()
 		ns.Engine:UndoLast()
 		ns.UI:Refresh()
 	end)
 
-	local restore = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-	restore:SetSize(140, 22)
+	local restore = ns.UI.Button(page, L["Restore originals"], 140, 22)
 	restore:SetPoint("LEFT", undoLast, "RIGHT", 8, 0)
-	restore:SetText(L["Restore originals"])
 	restore:SetScript("OnClick", function()
 		local n = 0
 		for _ in pairs(ns.db.global.baseline) do n = n + 1 end
@@ -118,10 +113,8 @@ local function build(parent)
 		StaticPopup_Show("SETTINGSHUB_RESTORE_BASELINE", n)
 	end)
 
-	local resetAll = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-	resetAll:SetSize(140, 22)
+	local resetAll = ns.UI.Button(page, L["All to Blizzard defaults"], 140, 22)
 	resetAll:SetPoint("LEFT", restore, "RIGHT", 8, 0)
-	resetAll:SetText(L["All to Blizzard defaults"])
 	resetAll:SetScript("OnClick", function()
 		local n = 0
 		for _ in pairs(ns.db.global.baseline) do n = n + 1 end
@@ -131,6 +124,7 @@ local function build(parent)
 
 	page.status = page:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	page.status:SetPoint("LEFT", resetAll, "RIGHT", 16, 0)
+	Style.SetColor(page.status, "SetTextColor", Style.Colors.SecondaryText)
 
 	-- T3 冲突区:期望态被同一外部来源跨登录反复覆盖(≥3 次)的项,给出处置按钮
 	page.conflictHeader = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -166,10 +160,8 @@ local function build(parent)
 		r.text:SetWidth(430)
 		r.text:SetJustifyH("LEFT")
 		r.text:SetWordWrap(false)
-		r.stopBtn = CreateFrame("Button", nil, r, "UIPanelButtonTemplate")
-		r.stopBtn:SetSize(96, 18)
+		r.stopBtn = ns.UI.Button(r, L["Stop managing"], 96, 18)
 		r.stopBtn:SetPoint("LEFT", 444, 0)
-		r.stopBtn:SetText(L["Stop managing"])
 		r.stopBtn:SetScript("OnClick", function()
 			if r.conflict then
 				ns.Conflicts:StopManaging(r.conflict.key)
@@ -177,10 +169,8 @@ local function build(parent)
 				page:OnPageShow()
 			end
 		end)
-		r.keepBtn = CreateFrame("Button", nil, r, "UIPanelButtonTemplate")
-		r.keepBtn:SetSize(96, 18)
+		r.keepBtn = ns.UI.Button(r, L["Keep mine"], 96, 18, true)
 		r.keepBtn:SetPoint("LEFT", r.stopBtn, "RIGHT", 6, 0)
-		r.keepBtn:SetText(L["Keep mine"])
 		r.keepBtn:SetScript("OnClick", function()
 			if r.conflict then
 				ns.Conflicts:Acknowledge(r.conflict.key, r.conflict.by)

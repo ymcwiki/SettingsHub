@@ -1,5 +1,6 @@
 local ADDON, ns = ...
 local L = ns.L
+local Style = ns.Style
 
 local function T(tbl)
 	return ns.IsCJK() and tbl.zh or tbl.en
@@ -42,22 +43,19 @@ local function build(parent)
 	intro:SetJustifyH("LEFT")
 	intro:SetWordWrap(true)
 	intro:SetText(L["Curated one-click bundles. Apply shows a preview first; every applied pack is one bulk entry in the undo log."])
+	Style.SetColor(intro, "SetTextColor", Style.Colors.SecondaryText)
 
 	-- 试穿状态条:有活动试穿时显示剩余时间与两个处置按钮
 	page.trialText = page:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	page.trialText:SetPoint("TOPLEFT", 4, -22)
-	page.trialRevert = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-	page.trialRevert:SetSize(90, 20)
+	page.trialRevert = ns.UI.Button(page, L["Revert now"], 90, 20)
 	page.trialRevert:SetPoint("TOPRIGHT", -220, -18)
-	page.trialRevert:SetText(L["Revert now"])
 	page.trialRevert:SetScript("OnClick", function()
 		ns.Trial:Revert("manual")
 		page:OnPageShow()
 	end)
-	page.trialPromote = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-	page.trialPromote:SetSize(90, 20)
+	page.trialPromote = ns.UI.Button(page, L["Keep it"], 90, 20, true)
 	page.trialPromote:SetPoint("LEFT", page.trialRevert, "RIGHT", 6, 0)
-	page.trialPromote:SetText(L["Keep it"])
 	page.trialPromote:SetScript("OnClick", function()
 		ns.Trial:Promote()
 		page:OnPageShow()
@@ -79,21 +77,19 @@ local function build(parent)
 		local title = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 		title:SetPoint("TOPLEFT", 62, 0)
 		title:SetText(T(pack.title))
+		Style.SetColor(title, "SetTextColor", Style.Colors.PrimaryText)
 
 		local count = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 		count:SetPoint("LEFT", title, "RIGHT", 10, 0)
+		Style.SetColor(count, "SetTextColor", Style.Colors.SecondaryText)
 
-		local applyBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-		applyBtn:SetSize(120, 22)
+		local applyBtn = ns.UI.Button(row, L["Preview & apply"], 120, 22, true)
 		applyBtn:SetPoint("TOPRIGHT", -8, 2)
-		applyBtn:SetText(L["Preview & apply"])
 		applyBtn:SetScript("OnClick", function() previewAndConfirm(pack) end)
 
 		-- 试穿:临时应用,10 分钟后自动还原(登出/手动还原/转常驻见顶部状态条)
-		local trialBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-		trialBtn:SetSize(120, 22)
+		local trialBtn = ns.UI.Button(row, L["Try for 10 min"], 120, 22)
 		trialBtn:SetPoint("TOPRIGHT", -8, -22)
-		trialBtn:SetText(L["Try for 10 min"])
 		trialBtn:SetScript("OnClick", function()
 			local n, err = ns.Trial:Start(pack.values, 10, T(pack.title))
 			if not n then
@@ -110,6 +106,7 @@ local function build(parent)
 		desc:SetJustifyH("LEFT")
 		desc:SetWordWrap(true)
 		desc:SetText(T(pack.text))
+		Style.SetColor(desc, "SetTextColor", Style.Colors.PrimaryText)
 
 		local keys = {}
 		for _, item in ipairs(pack.values) do keys[#keys + 1] = item.key .. "=" .. item.value end
@@ -119,6 +116,7 @@ local function build(parent)
 		detail:SetJustifyH("LEFT")
 		detail:SetWordWrap(true)
 		detail:SetText(table.concat(keys, "   "))
+		Style.SetColor(detail, "SetTextColor", Style.Colors.SecondaryText)
 
 		local h = 30 + desc:GetStringHeight() + detail:GetStringHeight()
 		if h < 56 then h = 56 end

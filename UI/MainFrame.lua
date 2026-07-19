@@ -12,7 +12,7 @@ function M.PopupEditBox(dialog)
 	return dialog.editBox or dialog.EditBox
 end
 
-local frame, searchBox, contentArea, combatBanner, nav
+local frame, searchBox, searchHint, contentArea, combatBanner, nav
 local navButtons = {}
 local navSeparators = {}
 local currentPageKey
@@ -82,39 +82,56 @@ local function buildFrame()
 	frame:Hide()
 	tinsert(UISpecialFrames, "SettingsHubFrame")
 
+	local titleBar = Style.Fill(frame, "BACKGROUND", Style.Colors.NavBackground)
+	titleBar:SetPoint("TOPLEFT", 1, -1)
+	titleBar:SetPoint("TOPRIGHT", -1, -1)
+	titleBar:SetHeight(Style.TitleBarHeight)
+
 	local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-	title:SetPoint("TOPLEFT", 16, -14)
+	title:SetPoint("LEFT", titleBar, "LEFT", Style.TitleInset, 0)
 	title:SetText("SettingsHub")
+	Style.SetColor(title, "SetTextColor", Style.Colors.PrimaryText)
 
-	local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-	close:SetPoint("TOPRIGHT", -6, -6)
+	local close = Style.CloseButton(frame)
+	close:SetPoint("RIGHT", titleBar, "RIGHT", -Style.TitleInset, 0)
 
-	searchBox = CreateFrame("EditBox", nil, frame, "SearchBoxTemplate")
-	searchBox:SetSize(Style.SearchWidth, Style.SearchHeight)
-	searchBox:SetPoint("TOPLEFT", title, "TOPRIGHT", 24, -2)
-	searchBox:SetAutoFocus(false)
+	searchBox = Style.SearchBox(frame, "搜索 / Search")
+	searchBox:SetPoint("LEFT", title, "RIGHT", 24, 0)
 	searchBox:HookScript("OnTextChanged", G(function(box, userInput)
 		if userInput then M:OnSearchChanged(box:GetText()) end
 	end))
 
-	local hint = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-	hint:SetPoint("LEFT", searchBox, "RIGHT", 10, 0)
-	hint:SetText(L["Filters: tag:favorite tag:modified tag:new tag:secure tag:hidden"])
+	searchHint = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	searchHint:SetPoint("LEFT", searchBox, "RIGHT", Style.SearchHintGap, 0)
+	searchHint:SetText(L["Filters: tag:favorite tag:modified tag:new tag:secure tag:hidden"])
+	Style.SetColor(searchHint, "SetTextColor", Style.Colors.SecondaryText)
 
-	combatBanner = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	combatBanner:SetPoint("TOPRIGHT", close, "TOPLEFT", -12, -8)
-	combatBanner:SetTextColor(unpack(Style.Colors.Combat))
-	combatBanner:SetText(L["In combat: secure values locked, writes will queue"])
+	combatBanner = CreateFrame("Frame", nil, frame)
+	combatBanner.text = combatBanner:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	combatBanner.text:SetPoint("CENTER")
+	combatBanner.text:SetText(L["In combat: secure values locked, writes will queue"])
+	Style.SetColor(combatBanner.text, "SetTextColor", Style.Colors.Combat)
+	combatBanner:SetSize(combatBanner.text:GetStringWidth() + Style.CombatPaddingX * 2,
+		combatBanner.text:GetStringHeight() + Style.CombatPaddingY * 2)
+	local combatBackground = Style.Fill(combatBanner, "BACKGROUND", Style.Colors.CombatBackground)
+	combatBackground:SetAllPoints()
+	combatBanner:SetPoint("RIGHT", close, "LEFT", -12, 0)
 	combatBanner:Hide()
 
 	nav = CreateFrame("Frame", nil, frame)
-	nav:SetPoint("TOPLEFT", 12, -48)
-	nav:SetPoint("BOTTOMLEFT", 12, 12)
-	nav:SetWidth(Style.NavWidth)
+	nav:SetPoint("TOPLEFT", 0, -Style.NavTop)
+	nav:SetPoint("BOTTOMLEFT", 0, 0)
+	nav:SetWidth(Style.NavWidth + Style.FrameInset)
+	local navBackground = Style.Fill(nav, "BACKGROUND", Style.Colors.NavBackground)
+	navBackground:SetAllPoints()
+	local navBorder = Style.Fill(nav, "BORDER", Style.Colors.Separator)
+	navBorder:SetPoint("TOPRIGHT")
+	navBorder:SetPoint("BOTTOMRIGHT")
+	navBorder:SetWidth(Style.SeparatorHeight)
 
 	contentArea = CreateFrame("Frame", nil, frame)
-	contentArea:SetPoint("TOPLEFT", nav, "TOPRIGHT", 6, 0)
-	contentArea:SetPoint("BOTTOMRIGHT", -12, 12)
+	contentArea:SetPoint("TOPLEFT", nav, "TOPRIGHT", Style.FrameInset, -Style.FrameInset)
+	contentArea:SetPoint("BOTTOMRIGHT", -Style.FrameInset, Style.FrameInset)
 
 	M:RebuildNavigation()
 end
@@ -138,7 +155,7 @@ function M:RebuildNavigation()
 				end
 				y = y - Style.NavSeparatorGap / 2
 				separator:ClearAllPoints()
-				separator:SetPoint("TOPLEFT", 6, y)
+				separator:SetPoint("TOPLEFT", Style.FrameInset + 6, y)
 				separator:SetPoint("TOPRIGHT", -6, y)
 				separator:Show()
 				y = y - Style.NavSeparatorGap / 2
@@ -148,17 +165,16 @@ function M:RebuildNavigation()
 			if not btn then
 				btn = CreateFrame("Button", nil, nav)
 				btn.text = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-				btn.text:SetPoint("LEFT", 6, 0)
-				local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
+				btn.text:SetPoint("LEFT", Style.NavTextInset, 0)
+				local highlight = Style.Fill(btn, "HIGHLIGHT", Style.Colors.NavHover)
 				highlight:SetAllPoints()
-				highlight:SetColorTexture(unpack(Style.Colors.NavHover))
 				local pageKey = key
 				btn:SetScript("OnClick", G(function() selectPage(pageKey) end))
 				navButtons[key] = btn
 			end
 			btn:ClearAllPoints()
 			btn:SetSize(Style.NavWidth, Style.NavRowHeight)
-			btn:SetPoint("TOPLEFT", 0, y)
+			btn:SetPoint("TOPLEFT", Style.FrameInset, y)
 			btn.text:SetText(page.title)
 			Style.NavRow(btn, currentPageKey == key)
 			btn:Show()
@@ -179,6 +195,7 @@ function M:SetCombatLock(locked)
 	self.combatLocked = locked
 	if frame and frame:IsShown() then
 		combatBanner:SetShown(locked)
+		searchHint:SetShown(not locked)
 		self:Refresh()
 	end
 end
@@ -198,6 +215,7 @@ function M:Toggle()
 	end
 	frame:Show()
 	combatBanner:SetShown(self.combatLocked)
+	searchHint:SetShown(not self.combatLocked)
 	local target = pageVisible(self.pages[currentPageKey]) and currentPageKey or firstVisiblePage()
 	selectPage(target)
 	searchBox:SetFocus()

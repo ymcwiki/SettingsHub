@@ -1,9 +1,12 @@
 local ADDON, ns = ...
 local L = ns.L
 local G = ns.Guard
+local Style = ns.Style
 
 local W = {}
 ns.Widgets = W
+
+-- 遗留模板(本轮明确保留):UICheckButtonTemplate、InputBoxTemplate、滑块与下拉。
 
 -- requiresReload 项改动后进 pending 集(会话级,重载后自然清空),ThemePage 据此显示重载按钮
 ns.Pending = ns.Pending or {}
@@ -102,10 +105,10 @@ local function baseRow(parent, control, height)
 	f.label:SetWidth(LABEL_W)
 	f.label:SetJustifyH("LEFT")
 	f.label:SetWordWrap(false)
+	Style.SetColor(f.label, "SetTextColor", Style.Colors.PrimaryText)
 	f:EnableMouse(true)
-	local hl = f:CreateTexture(nil, "HIGHLIGHT")
+	local hl = Style.Fill(f, "HIGHLIGHT", Style.Colors.NavHover)
 	hl:SetAllPoints()
-	hl:SetColorTexture(1, 1, 1, 0.05)
 	attachTooltip(f, control)
 	return f
 end
@@ -181,11 +184,10 @@ local function sliderBuilder(parent, control)
 	f.slider:SetValueStep(step)
 	f.slider:SetObeyStepOnDrag(true)
 	f.slider:EnableMouse(true)
-	local track = f.slider:CreateTexture(nil, "BACKGROUND")
+	local track = Style.Fill(f.slider, "BACKGROUND", Style.Colors.SecondaryText)
 	track:SetPoint("LEFT", 0, 0)
 	track:SetPoint("RIGHT", 0, 0)
 	track:SetHeight(4)
-	track:SetColorTexture(0.4, 0.45, 0.55, 0.5)
 	f.slider:SetThumbTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
 	local thumb = f.slider:GetThumbTexture()
 	if thumb then thumb:SetSize(24, 24) end
@@ -260,8 +262,7 @@ function builders.enum(parent, control)
 			f.btn:SetEnabled(not locked)
 		end
 	else
-		f.btn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-		f.btn:SetSize(110, 22)
+		f.btn = ns.UI.Button(f, "", 110, 22)
 		f.btn:SetPoint("LEFT", CTRL_X, 0)
 		f.btn:SetScript("OnClick", G(function()
 			local cur = tostring(curValue(control) or control.values[1])
@@ -293,10 +294,8 @@ StaticPopupDialogs["SETTINGSHUB_ACTION_CONFIRM"] = {
 
 function builders.action(parent, control)
 	local f = baseRow(parent, control, 30)
-	f.btn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-	f.btn:SetSize(150, 24)
+	f.btn = ns.UI.Button(f, control.buttonText and L[control.buttonText] or L["Run"], 150, 24)
 	f.btn:SetPoint("LEFT", CTRL_X, 0)
-	f.btn:SetText(control.buttonText and L[control.buttonText] or L["Run"])
 	f.btn:SetScript("OnClick", G(function()
 		if control.confirm then
 			StaticPopup_Show("SETTINGSHUB_ACTION_CONFIRM",
@@ -315,9 +314,8 @@ end
 
 function builders.composite(parent, control)
 	local f = CreateFrame("Frame", nil, parent)
-	local header = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	local header = Style.SectionHeader(f, labelText(control))
 	header:SetPoint("TOPLEFT", 4, -4)
-	header:SetText(labelText(control))
 	f:EnableMouse(true)
 	attachTooltip(f, control)
 	f.children = {}

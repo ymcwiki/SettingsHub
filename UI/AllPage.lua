@@ -1,9 +1,10 @@
 local ADDON, ns = ...
 local L = ns.L
+local Style = ns.Style
 
 local function buildAll(parent)
 	local page = CreateFrame("Frame", nil, parent)
-	page.count = page:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	page.count = Style.SectionHeader(page, "")
 	page.count:SetPoint("TOPLEFT", 0, -4)
 
 	page.list = ns.UI.CreateCvarList(page, function()

@@ -1,5 +1,6 @@
 local ADDON, ns = ...
 local L = ns.L
+local Style = ns.Style
 
 local DOMAIN_NAMES = {
 	cvar = "CVar", binding = L["Keybinds"], macro = L["Macros"], editmode = "EditMode",
@@ -52,8 +53,7 @@ StaticPopupDialogs["SETTINGSHUB_NEW_PROFILE"] = {
 
 -- 循环按钮:点一下换下一个候选值
 local function makeCycler(parent, width, getOptions, getCurrent, onSelect)
-	local btn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-	btn:SetSize(width, 20)
+	local btn = ns.UI.Button(parent, "", width, 20)
 	btn:SetScript("OnClick", function()
 		local options = getOptions()
 		local cur = getCurrent()
@@ -79,17 +79,15 @@ local function build(parent)
 	end
 
 	-- 左列:profile 列表与操作
-	local title = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	local title = Style.SectionHeader(page, "")
 	title:SetPoint("TOPLEFT", 4, -2)
 	refreshers[#refreshers + 1] = function()
 		title:SetFormattedText(L["Active profile: |cffffcc00%s|r (character base: %s)"],
 			ns.Profiles:Current(), ns.db.char.baseProfile or "Default")
 	end
 
-	local newBtn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-	newBtn:SetSize(80, 22)
+	local newBtn = ns.UI.Button(page, L["New/Switch"], 80, 22, true)
 	newBtn:SetPoint("TOPLEFT", 0, -24)
-	newBtn:SetText(L["New/Switch"])
 	newBtn:SetScript("OnClick", function() StaticPopup_Show("SETTINGSHUB_NEW_PROFILE") end)
 
 	local profileCycler
@@ -106,9 +104,9 @@ local function build(parent)
 	end
 
 	-- 域勾选 + 捕获
-	local domHeader = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	local domHeader = Style.SectionHeader(page,
+		L["Domains in this profile (only checked domains apply/export with it)"])
 	domHeader:SetPoint("TOPLEFT", 0, -58)
-	domHeader:SetText(L["Domains in this profile (only checked domains apply/export with it)"])
 	local x, checkboxes = 0, {}
 	for _, d in ipairs(DOMAIN_ORDER) do
 		local cb = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
@@ -127,10 +125,8 @@ local function build(parent)
 		for d, cb in pairs(checkboxes) do cb:SetChecked(ns.db.profile.domains[d] and true or false) end
 	end
 
-	local capBtn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-	capBtn:SetSize(200, 22)
+	local capBtn = ns.UI.Button(page, L["Capture checked domains now"], 200, 22)
 	capBtn:SetPoint("TOPLEFT", 0, -104)
-	capBtn:SetText(L["Capture checked domains now"])
 	capBtn:SetScript("OnClick", function()
 		for _, d in ipairs(ns.Profiles.BULK_DOMAINS) do
 			if ns.db.profile.domains[d] then ns.Profiles:CaptureDomain(d) end
@@ -141,9 +137,9 @@ local function build(parent)
 	capHint:SetText(L["Keybinds/macros/EditMode/click casting/TTS/chat windows are snapshots: re-capture after changing them"])
 
 	-- 四轴自动切换
-	local axisHeader = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	local axisHeader = Style.SectionHeader(page,
+		L["Auto-switch (priority: scene > spec > resolution > character base)"])
 	axisHeader:SetPoint("TOPLEFT", 0, -136)
-	axisHeader:SetText(L["Auto-switch (priority: scene > spec > resolution > character base)"])
 
 	local function profileOptions()
 		local opts = { NONE_OPTION }
@@ -227,22 +223,19 @@ local function build(parent)
 	yy = yy - 36
 
 	-- 导入导出
-	local exportBtn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-	exportBtn:SetSize(100, 22)
+	local exportBtn = ns.UI.Button(page, L["Export string"], 100, 22)
 	exportBtn:SetPoint("TOPLEFT", 0, yy)
-	exportBtn:SetText(L["Export string"])
 	exportBtn:SetScript("OnClick", function()
 		StaticPopup_Show("SETTINGSHUB_COPY", nil, nil, ns.Profiles:Export())
 	end)
 
+	-- 遗留:导入串输入与本页 UICheckButtonTemplate 按任务卡保留。
 	local importBox = CreateFrame("EditBox", nil, page, "InputBoxTemplate")
 	importBox:SetSize(320, 20)
 	importBox:SetPoint("LEFT", exportBtn, "RIGHT", 16, 0)
 	importBox:SetAutoFocus(false)
-	local importBtn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-	importBtn:SetSize(110, 22)
+	local importBtn = ns.UI.Button(page, L["Preview & import"], 110, 22, true)
 	importBtn:SetPoint("LEFT", importBox, "RIGHT", 8, 0)
-	importBtn:SetText(L["Preview & import"])
 	importBtn:SetScript("OnClick", function()
 		local payload, err = ns.Profiles:Decode(importBox:GetText())
 		if not payload then
