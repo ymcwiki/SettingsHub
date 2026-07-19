@@ -295,12 +295,12 @@ local function build(parent)
 		local sorted = {}
 		for _, t in ipairs(ns.Data.topicOrder) do
 			if (counts[t.key] or 0) > 0 then
-				sorted[#sorted + 1] = { id = t.key, n = counts[t.key], zh = t.zh }
+				sorted[#sorted + 1] = { id = t.key, n = counts[t.key], label = ns.Data.TopicName(t.key) }
 			end
 		end
 		local other = ns.Data.TOPIC_OTHER
 		if (counts[other.key] or 0) > 0 then
-			sorted[#sorted + 1] = { id = other.key, n = counts[other.key], zh = other.zh }
+			sorted[#sorted + 1] = { id = other.key, n = counts[other.key], label = ns.Data.TopicName(other.key) }
 		end
 		table.insert(sorted, 1, { id = nil, n = ns.Enum.count, all = true })
 		local favN = 0
@@ -326,7 +326,7 @@ local function build(parent)
 			btn:SetPoint("TOPLEFT", 0, y)
 			local label = c.all and L["All"]
 				or c.favorite and ("★ " .. L["Favorites"])
-				or c.zh or tostring(c.id)
+				or c.label or tostring(c.id)
 			local sel = (self.category == c.id) or (c.all and self.category == nil)
 			btn.text:SetText(string.format("%s%s (%d)|r", sel and "|cffffcc00" or "|cffcccccc", label, c.n))
 			btn:SetScript("OnClick", function()

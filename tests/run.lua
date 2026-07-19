@@ -709,6 +709,17 @@ t("主题:按主题过滤命中相机项", (function()
 	end
 	return false
 end)())
+t("主题:全部主题中英文名齐全", (function()
+	local function full(tp) return type(tp.zh) == "string" and tp.zh ~= "" and type(tp.en) == "string" and tp.en ~= "" end
+	if not full(ns.Data.TOPIC_OTHER) then return false end
+	for _, tp in ipairs(ns.Data.topicOrder) do
+		if not full(tp) then return false end
+	end
+	return true
+end)())
+-- 桩 locale 是 zhCN,TopicName 应取中文;未知 key 回落 key 本身
+t("主题:TopicName 中文客户端取中文", ns.Data.TopicName("camera") == "相机与视角"
+	and ns.Data.TopicName("other") == "其他" and ns.Data.TopicName("nosuch") == "nosuch")
 
 -- 收藏只写账号级书签表;不碰 CVar、期望态、baseline 或撤销环
 local favoriteUndoHead = ns.db.global.undoLog.head
