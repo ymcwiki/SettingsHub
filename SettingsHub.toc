@@ -42,6 +42,7 @@ Core\Replay.lua
 Core\Actions.lua
 Core\Profiles.lua
 Core\Snapshots.lua
+Core\PatchWatch.lua
 Core\Packs.lua
 Core\Trial.lua
 

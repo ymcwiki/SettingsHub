@@ -36,6 +36,34 @@ local function build(parent)
 	-- 布局元素表:{ frame=, height= },OnPageShow 时按可见性从上往下重排
 	local elements = {}
 
+	-- 补丁漂移报告:只展示 PatchWatch 已保存的 diff,恢复仍由用户进入快照页主动操作
+	local patchBlock = CreateFrame("Frame", nil, content)
+	patchBlock:SetSize(790, 10)
+	patchBlock.header = patchBlock:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	patchBlock.header:SetPoint("TOPLEFT", 0, 0)
+	patchBlock.header:SetText("|cffffcc00" .. L["This patch changed your settings"] .. "|r")
+	patchBlock.summary = patchBlock:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	patchBlock.summary:SetPoint("TOPLEFT", 2, -24)
+	patchBlock.summary:SetWidth(760)
+	patchBlock.summary:SetJustifyH("LEFT")
+	patchBlock.summary:SetWordWrap(true)
+	patchBlock.changes = patchBlock:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	patchBlock.changes:SetWidth(760)
+	patchBlock.changes:SetJustifyH("LEFT")
+	patchBlock.changes:SetWordWrap(true)
+	patchBlock.openBtn = CreateFrame("Button", nil, patchBlock, "UIPanelButtonTemplate")
+	patchBlock.openBtn:SetSize(210, 22)
+	patchBlock.openBtn:SetText(L["Open Snapshots to compare/restore"])
+	patchBlock.openBtn:SetScript("OnClick", function() ns.UI:SelectPage("snapshots") end)
+	patchBlock.dismissBtn = CreateFrame("Button", nil, patchBlock, "UIPanelButtonTemplate")
+	patchBlock.dismissBtn:SetSize(90, 22)
+	patchBlock.dismissBtn:SetText(L["Got it"])
+	patchBlock.dismissBtn:SetScript("OnClick", function()
+		ns.db.global.patchReport.dismissed = true
+		page:OnPageShow()
+	end)
+	elements[#elements + 1] = { frame = patchBlock, height = 10, isPatchReport = true }
+
 	-- 外部接管区:只读提示,加载中的接管插件发生变化时动态刷新
 	local takeoverHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	takeoverHeader:SetText("|cffff8800" .. L["Possible external takeover"] .. "|r")
@@ -194,6 +222,33 @@ local function build(parent)
 		local y = -6
 		local anyTip = false
 		local owners = ns.Takeover and ns.Takeover:ActiveOwners() or {}
+		local report = ns.db.global.patchReport
+		local reportVisible = report and not report.dismissed
+			and (#report.changed + #report.added + #report.removed > 0)
+		if reportVisible then
+			patchBlock.summary:SetFormattedText(
+				L["Patch %s → %s: %d values changed, %d added, %d removed"],
+				tostring(report.fromVersion), tostring(report.toVersion),
+				#report.changed, #report.added, #report.removed)
+			local lines = {}
+			for i = 1, math.min(6, #report.changed) do
+				local change = report.changed[i]
+				lines[#lines + 1] = change.key .. ": " .. tostring(change.from) .. " → " .. tostring(change.to)
+			end
+			patchBlock.changes:ClearAllPoints()
+			patchBlock.changes:SetPoint("TOPLEFT", patchBlock.summary, "BOTTOMLEFT", 0, -6)
+			patchBlock.changes:SetText(table.concat(lines, "\n"))
+			patchBlock.openBtn:ClearAllPoints()
+			patchBlock.openBtn:SetPoint("TOPLEFT", patchBlock.changes, "BOTTOMLEFT", 0, -8)
+			patchBlock.dismissBtn:ClearAllPoints()
+			patchBlock.dismissBtn:SetPoint("LEFT", patchBlock.openBtn, "RIGHT", 8, 0)
+			local height = 24 + patchBlock.summary:GetStringHeight()
+				+ patchBlock.changes:GetStringHeight() + 38
+			patchBlock:SetHeight(height)
+			for _, el in ipairs(elements) do
+				if el.isPatchReport then el.height = height break end
+			end
+		end
 		for i, row in ipairs(takeoverRows) do
 			local hit = owners[i]
 			if hit then
@@ -203,7 +258,9 @@ local function build(parent)
 		end
 		for _, el in ipairs(elements) do
 			local show = true
-			if el.isTakeoverHeader then
+			if el.isPatchReport then
+				show = reportVisible
+			elseif el.isTakeoverHeader then
 				show = #owners > 0
 			elseif el.takeoverIndex then
 				show = owners[el.takeoverIndex] ~= nil

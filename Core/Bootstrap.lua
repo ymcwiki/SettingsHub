@@ -58,6 +58,7 @@ ns.f:SetScript("OnEvent", ns.Guard(function(_, event, ...)
 		ns.Conflicts:OnLogin()
 		ns.Trial:Arm()
 		ns.Replay:OnLogin()
+		if ns.PatchWatch then ns.PatchWatch:OnLogin() end
 		if ns.Integration then ns.Integration:Register() end
 	elseif event == "PLAYER_LOGOUT" then
 		if ns.Trial:Active() then ns.Trial:Revert("logout") end

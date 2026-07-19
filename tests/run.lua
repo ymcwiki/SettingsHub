@@ -11,7 +11,7 @@ local FILES = {
 	"Adapters/ClickBinding.lua", "Adapters/MuteSound.lua", "Adapters/TTS.lua", "Adapters/ConsoleExec.lua",
 	"Adapters/ChatWindow.lua",
 	"Core/Engine.lua", "Core/Conflicts.lua", "Core/Replay.lua", "Core/Actions.lua", "Core/Profiles.lua",
-	"Core/Snapshots.lua", "Core/Packs.lua", "Core/Trial.lua",
+	"Core/Snapshots.lua", "Core/PatchWatch.lua", "Core/Packs.lua", "Core/Trial.lua",
 	"Data/Curated_A_Camera.lua", "Data/Curated_B_SoftTarget.lua", "Data/Curated_C_Nameplate.lua",
 	"Data/Curated_D_CombatText.lua", "Data/Curated_E_QoL.lua", "Data/Curated_F_Graphics.lua",
 	"Data/Curated_G_Sound.lua", "Data/Curated_H_Dev.lua", "Data/Curated_I_Chat.lua",
@@ -851,6 +851,40 @@ for _, sn in ipairs(ns.Snapshots:List()) do
 end
 t("快照:确认后淘汰最旧份", sx ~= nil and #ns.Snapshots:List() == 10 and not s1Alive)
 t("快照:删除", ns.Snapshots:Delete(sx) and #ns.Snapshots:List() == 9)
+
+-- R3 补丁漂移:首次落基准、同 build 静默、跨 build 只读地产生报告
+do
+	local g = ns.db.global
+	g.patchBaseline, g.patchReport = nil, nil
+	ns.PatchWatch:OnLogin()
+	t("补丁漂移:首次只落基准", g.patchBaseline ~= nil
+		and g.patchBaseline.build == stub.state.build and g.patchReport == nil)
+	local firstBuild = g.patchBaseline.build
+	ns.PatchWatch:OnLogin()
+	t("补丁漂移:同 build 不报告", g.patchReport == nil
+		and g.patchBaseline.build == firstBuild)
+
+	stub.state.version, stub.state.build = "12.1.5", "58100"
+	stub.registry.dummyCvar921.value = "8"
+	ns.Enum:Refresh()
+	local valueBefore = C_CVar.GetCVar("dummyCvar921")
+	local consoleBefore = #stub.consoleLog
+	ns.PatchWatch:OnLogin()
+	local report = g.patchReport
+	local changed
+	for _, item in ipairs(report and report.changed or {}) do
+		if item.key == "dummyCvar921" then changed = item break end
+	end
+	t("补丁漂移:build 变化生成报告", report ~= nil
+		and report.fromBuild == "58000" and report.toBuild == "58100"
+		and report.fromVersion == "12.1.0" and report.toVersion == "12.1.5")
+	t("补丁漂移:报告含正确值变", changed ~= nil
+		and changed.from == "0" and changed.to == "8")
+	t("补丁漂移:报告后更新基准", g.patchBaseline.build == "58100"
+		and g.patchBaseline.version == "12.1.5")
+	t("补丁漂移:检测过程只读", C_CVar.GetCVar("dummyCvar921") == valueBefore
+		and #stub.consoleLog == consoleBefore)
+end
 
 -- v0.3 聊天窗口域:全量快照回环 + 战斗锁
 local cwsnap = ns.Adapters.chatwindow:Serialize()
