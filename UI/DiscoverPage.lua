@@ -1,5 +1,6 @@
 local ADDON, ns = ...
 local L = ns.L
+local Style = ns.Style
 
 -- 发现页:外部接管(只读)/ 建议(条件命中才显示)/ 意图引导(内联真控件)/ 近期补丁新增
 local function T(tbl)
@@ -37,27 +38,25 @@ local function build(parent)
 	local elements = {}
 
 	-- 补丁漂移报告:只展示 PatchWatch 已保存的 diff,恢复仍由用户进入快照页主动操作
-	local patchBlock = CreateFrame("Frame", nil, content)
+	local patchBlock = CreateFrame("Frame", nil, content, "BackdropTemplate")
 	patchBlock:SetSize(790, 10)
-	patchBlock.header = patchBlock:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-	patchBlock.header:SetPoint("TOPLEFT", 0, 0)
-	patchBlock.header:SetText("|cffffcc00" .. L["This patch changed your settings"] .. "|r")
+	Style.Card(patchBlock)
+	patchBlock.header = Style.SectionHeader(patchBlock, L["This patch changed your settings"])
+	patchBlock.header:SetPoint("TOPLEFT", Style.CardInset, -Style.CardInset)
 	patchBlock.summary = patchBlock:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	patchBlock.summary:SetPoint("TOPLEFT", 2, -24)
-	patchBlock.summary:SetWidth(760)
+	patchBlock.summary:SetPoint("TOPLEFT", Style.CardInset, -30)
+	patchBlock.summary:SetWidth(744)
 	patchBlock.summary:SetJustifyH("LEFT")
 	patchBlock.summary:SetWordWrap(true)
+	Style.SetColor(patchBlock.summary, "SetTextColor", Style.Colors.PrimaryText)
 	patchBlock.changes = patchBlock:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	patchBlock.changes:SetWidth(760)
+	patchBlock.changes:SetWidth(744)
 	patchBlock.changes:SetJustifyH("LEFT")
 	patchBlock.changes:SetWordWrap(true)
-	patchBlock.openBtn = CreateFrame("Button", nil, patchBlock, "UIPanelButtonTemplate")
-	patchBlock.openBtn:SetSize(210, 22)
-	patchBlock.openBtn:SetText(L["Open Snapshots to compare/restore"])
-	patchBlock.openBtn:SetScript("OnClick", function() ns.UI:SelectPage("snapshots") end)
-	patchBlock.dismissBtn = CreateFrame("Button", nil, patchBlock, "UIPanelButtonTemplate")
-	patchBlock.dismissBtn:SetSize(90, 22)
-	patchBlock.dismissBtn:SetText(L["Got it"])
+	Style.SetColor(patchBlock.changes, "SetTextColor", Style.Colors.PrimaryText)
+	patchBlock.openBtn = ns.UI.Button(patchBlock, L["Open Snapshots to compare/restore"], 210, 22, true)
+	patchBlock.openBtn:SetScript("OnClick", function() ns.UI:SelectPage("snapshot") end)
+	patchBlock.dismissBtn = ns.UI.Button(patchBlock, L["Got it"], 90, 22)
 	patchBlock.dismissBtn:SetScript("OnClick", function()
 		ns.db.global.patchReport.dismissed = true
 		page:OnPageShow()
@@ -65,18 +64,21 @@ local function build(parent)
 	elements[#elements + 1] = { frame = patchBlock, height = 10, isPatchReport = true }
 
 	-- 外部接管区:只读提示,加载中的接管插件发生变化时动态刷新
-	local takeoverHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	takeoverHeader:SetText("|cffff8800" .. L["Possible external takeover"] .. "|r")
-	elements[#elements + 1] = { frame = takeoverHeader, height = 20, isTakeoverHeader = true }
+	local takeoverCard = CreateFrame("Frame", nil, content, "BackdropTemplate")
+	takeoverCard:SetSize(790, 10)
+	Style.Card(takeoverCard)
+	local takeoverHeader = Style.SectionHeader(takeoverCard, L["Possible external takeover"])
+	takeoverHeader:SetPoint("TOPLEFT", Style.CardInset, -Style.CardInset)
+	elements[#elements + 1] = { frame = takeoverCard, height = 10, isTakeoverCard = true }
 
 	local takeoverRows = {}
 	for _ = 1, #((ns.Data and ns.Data.takeovers) or {}) do
-		local row = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-		row:SetWidth(760)
+		local row = takeoverCard:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		row:SetWidth(744)
 		row:SetJustifyH("LEFT")
 		row:SetWordWrap(true)
+		Style.SetColor(row, "SetTextColor", Style.Colors.PrimaryText)
 		takeoverRows[#takeoverRows + 1] = row
-		elements[#elements + 1] = { frame = row, height = 22, takeoverIndex = #takeoverRows }
 	end
 
 	-- 建议区
@@ -94,33 +96,33 @@ local function build(parent)
 		return false
 	end
 
-	local tipsHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	tipsHeader:SetText("|cffffcc00" .. L["Suggestions based on your current values"] .. "|r")
-	elements[#elements + 1] = { frame = tipsHeader, height = 20, isTipHeader = true }
+	local tipsCard = CreateFrame("Frame", nil, content, "BackdropTemplate")
+	tipsCard:SetSize(790, 10)
+	Style.Card(tipsCard)
+	local tipsHeader = Style.SectionHeader(tipsCard, L["Suggestions based on your current values"])
+	tipsHeader:SetPoint("TOPLEFT", Style.CardInset, -Style.CardInset)
+	elements[#elements + 1] = { frame = tipsCard, height = 10, isTipsCard = true }
 
 	local tipRows = {}
 	for _, tip in ipairs(ns.Data.tips or {}) do
-		local row = CreateFrame("Frame", nil, content)
-		row:SetSize(780, 10)
+		local row = CreateFrame("Frame", nil, tipsCard)
+		row:SetSize(774, 10)
 		row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 		row.text:SetPoint("TOPLEFT", 8, -2)
 		row.text:SetWidth(540)
 		row.text:SetJustifyH("LEFT")
 		row.text:SetWordWrap(true)
 		row.text:SetText(T(tip.text))
-		row.applyBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-		row.applyBtn:SetSize(110, 20)
+		Style.SetColor(row.text, "SetTextColor", Style.Colors.PrimaryText)
+		row.applyBtn = ns.UI.Button(row, T(tip.action), 110, 20, true)
 		row.applyBtn:SetPoint("TOPRIGHT", -110, -2)
-		row.applyBtn:SetText(T(tip.action))
 		row.applyBtn:SetScript("OnClick", function()
 			ns.Engine:Set("cvar", tip.cvar, tip.suggest, "user")
 			ns.Print(string.format(L["Suggestion applied: %s = %s"], tip.cvar, tip.suggest))
 			page:OnPageShow()
 		end)
-		row.dismissBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-		row.dismissBtn:SetSize(96, 20)
+		row.dismissBtn = ns.UI.Button(row, L["Don't remind me"], 96, 20)
 		row.dismissBtn:SetPoint("LEFT", row.applyBtn, "RIGHT", 6, 0)
-		row.dismissBtn:SetText(L["Don't remind me"])
 		row.dismissBtn:SetScript("OnClick", function()
 			ns.db.global.tipsDismissed[tip.key] = true
 			page:OnPageShow()
@@ -128,7 +130,6 @@ local function build(parent)
 		row:SetHeight(math.max(26, row.text:GetStringHeight() + 8))
 		row.tip = tip
 		tipRows[#tipRows + 1] = row
-		elements[#elements + 1] = { frame = row, height = row:GetHeight(), tipRow = row }
 	end
 
 	-- 意图引导区
@@ -138,12 +139,14 @@ local function build(parent)
 		local header = block:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 		header:SetPoint("TOPLEFT", 0, 0)
 		header:SetText(T(guide.title))
+		Style.SetColor(header, "SetTextColor", Style.Colors.PrimaryText)
 		local blurb = block:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 		blurb:SetPoint("TOPLEFT", 2, -22)
 		blurb:SetWidth(760)
 		blurb:SetJustifyH("LEFT")
 		blurb:SetWordWrap(true)
 		blurb:SetText(T(guide.blurb))
+		Style.SetColor(blurb, "SetTextColor", Style.Colors.SecondaryText)
 		local y = -26 - blurb:GetStringHeight()
 		for _, id in ipairs(guide.items) do
 			local c = byId[id]
@@ -158,10 +161,8 @@ local function build(parent)
 			end
 		end
 		if guide.pack then
-			local pb = CreateFrame("Button", nil, block, "UIPanelButtonTemplate")
-			pb:SetSize(180, 22)
+			local pb = ns.UI.Button(block, L["Open the matching pack"], 180, 22)
 			pb:SetPoint("TOPLEFT", 10, y - 2)
-			pb:SetText(L["Open the matching pack"])
 			pb:SetScript("OnClick", function() ns.UI:SelectPage("packs") end)
 			y = y - 28
 		end
@@ -192,6 +193,7 @@ local function build(parent)
 			local header = block:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 			header:SetPoint("TOPLEFT", 0, 0)
 			header:SetFormattedText(L["New settings in patch %s"], patch)
+			Style.SetColor(header, "SetTextColor", Style.Colors.PrimaryText)
 			local y = -24
 			local unavailable = 0
 			for _, c in ipairs(byPatch[patch]) do
@@ -243,7 +245,7 @@ local function build(parent)
 			patchBlock.dismissBtn:ClearAllPoints()
 			patchBlock.dismissBtn:SetPoint("LEFT", patchBlock.openBtn, "RIGHT", 8, 0)
 			local height = 24 + patchBlock.summary:GetStringHeight()
-				+ patchBlock.changes:GetStringHeight() + 38
+				+ patchBlock.changes:GetStringHeight() + 38 + Style.CardInset * 2
 			patchBlock:SetHeight(height)
 			for _, el in ipairs(elements) do
 				if el.isPatchReport then el.height = height break end
@@ -251,27 +253,40 @@ local function build(parent)
 		end
 		for i, row in ipairs(takeoverRows) do
 			local hit = owners[i]
+			row:SetShown(hit ~= nil)
 			if hit then
 				local text = ns.IsCJK() and hit.entry.text.zh or hit.entry.text.en
 				row:SetText(string.format(L["Detected %s: %s"], hit.addon, string.format(text, hit.addon)))
+				row:ClearAllPoints()
+				row:SetPoint("TOPLEFT", takeoverCard, "TOPLEFT", Style.CardInset, -30 - (i - 1) * 22)
 			end
 		end
+		local takeoverHeight = 30 + #owners * 22 + Style.CardInset
+		takeoverCard:SetHeight(takeoverHeight)
+
+		local tipY = -30
+		for _, row in ipairs(tipRows) do
+			local show = tipActive(row.tip)
+			row:SetShown(show)
+			if show then
+				anyTip = true
+				row:ClearAllPoints()
+				row:SetPoint("TOPLEFT", tipsCard, "TOPLEFT", Style.CardInset, tipY)
+				tipY = tipY - row:GetHeight()
+			end
+		end
+		local tipsHeight = -tipY + Style.CardInset
+		tipsCard:SetHeight(tipsHeight)
 		for _, el in ipairs(elements) do
 			local show = true
 			if el.isPatchReport then
 				show = reportVisible
-			elseif el.isTakeoverHeader then
+			elseif el.isTakeoverCard then
 				show = #owners > 0
-			elseif el.takeoverIndex then
-				show = owners[el.takeoverIndex] ~= nil
-			elseif el.isTipHeader then
-				anyTip = false
-				for _, row in ipairs(tipRows) do
-					if tipActive(row.tip) then anyTip = true end
-				end
+				el.height = takeoverHeight
+			elseif el.isTipsCard then
 				show = anyTip
-			elseif el.tipRow then
-				show = tipActive(el.tipRow.tip)
+				el.height = tipsHeight
 			end
 			el.frame:SetShown(show)
 			if show then

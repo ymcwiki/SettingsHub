@@ -1,5 +1,6 @@
 local ADDON, ns = ...
 local L = ns.L
+local Style = ns.Style
 
 local ROW_H = 20
 local LIST_ROWS = 10
@@ -39,18 +40,18 @@ local function build(parent)
 	local nameLabel = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	nameLabel:SetPoint("TOPLEFT", 4, -6)
 	nameLabel:SetText(L["Name:"])
+	-- 遗留:普通数据输入与下方 UICheckButtonTemplate 按任务卡保留。
 	local nameBox = CreateFrame("EditBox", nil, page, "InputBoxTemplate")
 	nameBox:SetSize(160, 20)
 	nameBox:SetPoint("LEFT", nameLabel, "RIGHT", 10, 0)
 	nameBox:SetAutoFocus(false)
 
-	local createBtn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-	createBtn:SetSize(110, 22)
+	local createBtn = ns.UI.Button(page, L["New snapshot"], 110, 22, true)
 	createBtn:SetPoint("LEFT", nameBox, "RIGHT", 10, 0)
-	createBtn:SetText(L["New snapshot"])
 
 	page.countText = page:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	page.countText:SetPoint("LEFT", createBtn, "RIGHT", 12, 0)
+	Style.SetColor(page.countText, "SetTextColor", Style.Colors.SecondaryText)
 
 	local function doCreate(evict)
 		local name = nameBox:GetText():match("^%s*(.-)%s*$")
@@ -72,8 +73,7 @@ local function build(parent)
 
 	-- 对比基准:当前实机值或另一份快照
 	page.baselineIdx = 0
-	local baseBtn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-	baseBtn:SetSize(200, 20)
+	local baseBtn = ns.UI.Button(page, "", 200, 20)
 	baseBtn:SetPoint("TOPRIGHT", -26, -6)
 	local function baselineName()
 		if page.baselineIdx == 0 then return L["Live values"] end
@@ -102,15 +102,11 @@ local function build(parent)
 		r.text:SetWidth(470)
 		r.text:SetJustifyH("LEFT")
 		r.text:SetWordWrap(false)
-		r.cmpBtn = CreateFrame("Button", nil, r, "UIPanelButtonTemplate")
-		r.cmpBtn:SetSize(70, 18)
+		r.cmpBtn = ns.UI.Button(r, L["Compare"], 70, 18)
 		r.cmpBtn:SetPoint("LEFT", 480, 0)
-		r.cmpBtn:SetText(L["Compare"])
 		r.cmpBtn:SetScript("OnClick", function() page:RunDiff(r.snap) end)
-		r.delBtn = CreateFrame("Button", nil, r, "UIPanelButtonTemplate")
-		r.delBtn:SetSize(70, 18)
+		r.delBtn = ns.UI.Button(r, L["Delete"], 70, 18)
 		r.delBtn:SetPoint("LEFT", r.cmpBtn, "RIGHT", 6, 0)
-		r.delBtn:SetText(L["Delete"])
 		r.delBtn:SetScript("OnClick", function()
 			StaticPopup_Show("SETTINGSHUB_SNAPSHOT_DELETE", r.snap.name, nil, function()
 				ns.Snapshots:Delete(r.snap)
@@ -125,31 +121,25 @@ local function build(parent)
 
 	-- 差异区:标题 + 全选/清空/恢复 + 滚动列表
 	local diffTop = -30 - LIST_ROWS * 22 - 8
-	page.diffTitle = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	page.diffTitle = Style.SectionHeader(page,
+		L["Pick a snapshot and hit Compare; check changed rows to restore them selectively"])
 	page.diffTitle:SetPoint("TOPLEFT", 0, diffTop)
-	page.diffTitle:SetText(L["Pick a snapshot and hit Compare; check changed rows to restore them selectively"])
 
-	local checkAll = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-	checkAll:SetSize(90, 20)
+	local checkAll = ns.UI.Button(page, L["Check all"], 90, 20)
 	checkAll:SetPoint("TOPLEFT", 0, diffTop - 20)
-	checkAll:SetText(L["Check all"])
 	checkAll:SetScript("OnClick", function()
 		if not page.diff then return end
 		for _, c in ipairs(page.diff.changed) do page.checked[c.key] = true end
 		page:RenderDiff()
 	end)
-	local checkNone = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-	checkNone:SetSize(90, 20)
+	local checkNone = ns.UI.Button(page, L["Uncheck all"], 90, 20)
 	checkNone:SetPoint("LEFT", checkAll, "RIGHT", 6, 0)
-	checkNone:SetText(L["Uncheck all"])
 	checkNone:SetScript("OnClick", function()
 		wipe(page.checked)
 		page:RenderDiff()
 	end)
-	local restoreBtn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-	restoreBtn:SetSize(130, 20)
+	local restoreBtn = ns.UI.Button(page, L["Restore checked"], 130, 20, true)
 	restoreBtn:SetPoint("LEFT", checkNone, "RIGHT", 6, 0)
-	restoreBtn:SetText(L["Restore checked"])
 	restoreBtn:SetScript("OnClick", function()
 		if not page.diffSnap then return end
 		local keys = {}

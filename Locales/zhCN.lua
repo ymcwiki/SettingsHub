@@ -8,7 +8,7 @@ if loc ~= "zhCN" and loc ~= "zhTW" then return end
 local L = ns.L
 
 -- 主窗口与导航
-L["Browser"] = "浏览器"
+L["All Settings"] = "全部设置"
 L["Profiles & Migration"] = "Profile 与迁移"
 L["Snapshots"] = "快照"
 L["Log & Restore"] = "日志与还原"
@@ -95,7 +95,7 @@ L["Favorites"] = "收藏"
 L["Add to favorites"] = "加入收藏"
 L["Remove from favorites"] = "取消收藏"
 L["Toggle favorite"] = "收藏 / 取消收藏"
-L["Favorites gather in the star category on the left and the tag:favorite filter"] = "收藏的条目汇总在左侧星标分类与 tag:favorite 过滤词下"
+L["Favorites gather in the Favorites tab and the tag:favorite filter"] = "收藏的条目汇总在「★ 收藏」选项卡与 tag:favorite 过滤词下"
 L["%s write failed (%s): may be read-only or an invalid value"] = "%s 写入失败(%s):可能只读或值非法"
 L["Secure values are locked in combat, try again after combat"] = "战斗中 secure 项已锁定,脱战后再改"
 
@@ -110,6 +110,8 @@ L["Run: %s?"] = "确认执行:%s?"
 L["Run"] = "执行"
 
 -- 主题页
+L["Curated picks"] = "策展推荐"
+L["All %d entries"] = "全部 %d 项"
 L["Muted sounds (MuteSoundFile, replayed at login)"] = "静音音效列表(MuteSoundFile,登录自动重放)"
 L["Add"] = "添加"
 L["Enter a soundKitFile fileID (look it up on wago.tools)"] = "输入 soundKitFile 的 fileID(wago.tools 可查)"

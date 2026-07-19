@@ -270,29 +270,29 @@ ns.Data.topicRules = {
 	} },
 }
 
--- 主题侧栏展示顺序与中文名(「其他」恒最后,由 UI 追加)
+-- 主题侧栏展示顺序与双语名(「其他」恒最后,由 UI 追加)
 ns.Data.topicOrder = {
-	{ key = "camera", zh = "相机与视角" },
-	{ key = "nameplate", zh = "姓名板" },
-	{ key = "unitframe", zh = "单位框体与团队" },
-	{ key = "graphics", zh = "图形与画质" },
-	{ key = "sound", zh = "声音与语音" },
-	{ key = "softtarget", zh = "软目标与互动" },
-	{ key = "combattext", zh = "战斗浮动文字" },
-	{ key = "chat", zh = "聊天" },
-	{ key = "gamepad", zh = "手柄与光标" },
-	{ key = "questmap", zh = "任务与地图" },
-	{ key = "housing", zh = "玩家住宅" },
-	{ key = "actionbar", zh = "动作条与技能" },
-	{ key = "ui", zh = "界面与提示" },
-	{ key = "network", zh = "网络与账号" },
-	{ key = "input", zh = "输入与按键" },
-	{ key = "accessibility", zh = "辅助功能与播报" },
-	{ key = "social", zh = "社交与公会" },
-	{ key = "developer", zh = "开发与调试" },
+	{ key = "camera", zh = "相机与视角", en = "Camera & View" },
+	{ key = "nameplate", zh = "姓名板", en = "Nameplates" },
+	{ key = "unitframe", zh = "单位框体与团队", en = "Unit Frames & Raid" },
+	{ key = "graphics", zh = "图形与画质", en = "Graphics & Quality" },
+	{ key = "sound", zh = "声音与语音", en = "Sound & Voice" },
+	{ key = "softtarget", zh = "软目标与互动", en = "Soft Target & Interact" },
+	{ key = "combattext", zh = "战斗浮动文字", en = "Floating Combat Text" },
+	{ key = "chat", zh = "聊天", en = "Chat" },
+	{ key = "gamepad", zh = "手柄与光标", en = "Gamepad & Cursor" },
+	{ key = "questmap", zh = "任务与地图", en = "Quests & Maps" },
+	{ key = "housing", zh = "玩家住宅", en = "Housing" },
+	{ key = "actionbar", zh = "动作条与技能", en = "Action Bars & Spells" },
+	{ key = "ui", zh = "界面与提示", en = "Interface & Tooltips" },
+	{ key = "network", zh = "网络与账号", en = "Network & Account" },
+	{ key = "input", zh = "输入与按键", en = "Input & Keybinds" },
+	{ key = "accessibility", zh = "辅助功能与播报", en = "Accessibility & TTS" },
+	{ key = "social", zh = "社交与公会", en = "Social & Guild" },
+	{ key = "developer", zh = "开发与调试", en = "Developer & Debug" },
 }
 
-ns.Data.TOPIC_OTHER = { key = "other", zh = "其他" }
+ns.Data.TOPIC_OTHER = { key = "other", zh = "其他", en = "Other" }
 
 local cache = {}
 -- 返回该 CVar 的主题 key(带缓存);未命中返回 "other"
@@ -313,7 +313,9 @@ function ns.Data.ClassifyTopic(name)
 	return "other"
 end
 
--- 主题 key -> 中文名(含其他)
-local names = { other = ns.Data.TOPIC_OTHER.zh }
-for _, t in ipairs(ns.Data.topicOrder) do names[t.key] = t.zh end
+-- 主题 key -> 客户端语言的显示名(含其他);中文客户端取 zh,其余取 en
+local names = {}
+local function pick(t) return ns.IsCJK() and t.zh or t.en end
+names[ns.Data.TOPIC_OTHER.key] = pick(ns.Data.TOPIC_OTHER)
+for _, t in ipairs(ns.Data.topicOrder) do names[t.key] = pick(t) end
 function ns.Data.TopicName(key) return names[key] or key end

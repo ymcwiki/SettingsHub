@@ -67,10 +67,12 @@ Data\Exposed.lua
 
 UI\Search.lua
 UI\MainFrame.lua
-UI\DiscoverPage.lua
-UI\Browser.lua
+UI\Style.lua
 UI\Widgets.lua
-UI\ThemePage.lua
+UI\CvarList.lua
+UI\DiscoverPage.lua
+UI\AllPage.lua
+UI\TopicPage.lua
 UI\PackPage.lua
 UI\ProfilePage.lua
 UI\SnapshotPage.lua
