@@ -87,7 +87,7 @@ SlashCmdList.SETTINGSHUB = ns.Guard(function(msg)
 	if msg == "test" then
 		ns.SelfTest:Run()
 	elseif msg == "test relog" then
-		ns.Print("写管线测试已移至无头 CI,实机自测只读")
+		ns.Print(ns.L["Write tests moved to headless CI; in-game self test is read-only"])
 		ns.SelfTest:Run()
 	elseif msg == "dump" then
 		ns.SelfTest:Dump()
