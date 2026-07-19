@@ -28,3 +28,7 @@ ignore:
   - scripts
   - tests
   - requirements-dev.txt
+  # LibDeflate 这个 commit 自身 pkgmeta 不忽略 docs/examples,显式剔除
+  # (纯 css/config/md,非 HTML+rockspec,CF 能过,但保持包干净)
+  - Libs/LibDeflate/docs
+  - Libs/LibDeflate/examples
