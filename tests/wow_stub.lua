@@ -33,6 +33,13 @@ end
 _G.time = os.time
 _G.InCombatLockdown = function() return stub.state.inCombat end
 
+stub.loadedAddons = {}
+function stub.setAddonLoaded(name, value) stub.loadedAddons[name] = value end
+_G.C_AddOns = {
+	IsAddOnLoaded = function(name) return stub.loadedAddons and stub.loadedAddons[name] or false end,
+}
+_G.IsAddOnLoaded = _G.C_AddOns.IsAddOnLoaded
+
 -- UI 方法一律 no-op 兜底:测试只关心逻辑,不关心布局
 local function uiNoop(t)
 	return setmetatable(t or {}, { __index = function(tt, k)

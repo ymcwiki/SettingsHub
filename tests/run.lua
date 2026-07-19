@@ -16,7 +16,8 @@ local FILES = {
 	"Data/Curated_D_CombatText.lua", "Data/Curated_E_QoL.lua", "Data/Curated_F_Graphics.lua",
 	"Data/Curated_G_Sound.lua", "Data/Curated_H_Dev.lua", "Data/Curated_I_Chat.lua",
 	"Data/Curated_J_Input.lua", "Data/Curated_K_QuestMap.lua",
-	"Data/Packs.lua", "Data/Guides.lua", "Data/Pinyin.lua", "Data/Encyclopedia.lua", "Data/Topics.lua", "Data/Exposed.lua",
+	"Data/Packs.lua", "Data/Guides.lua", "Data/Pinyin.lua", "Data/Encyclopedia.lua", "Data/Topics.lua",
+	"Data/Takeovers.lua", "Core/Takeover.lua", "Data/Exposed.lua",
 	"UI/Search.lua",
 	"Integration/OfficialSettings.lua",
 	"SelfTest.lua",
@@ -969,6 +970,38 @@ do
 	t("自检:错误含消息与栈", e.msg:find("boom%-selfcheck") ~= nil and type(e.stack) == "string")
 	E:Set("cvar", "dummyCvar61", "0", "test")
 end
+
+-- v0.6 外部接管检测:仅按已加载插件与静态映射提示,全程只读
+local noTakeover = ns.Takeover:ForKey("nameplateMaxDistance")
+local noOwners = ns.Takeover:ActiveOwners()
+t("接管:无插件加载时无命中", noTakeover == nil and #noOwners == 0, #noOwners)
+
+stub.setAddonLoaded("Plater", true)
+stub.fire("ADDON_LOADED", "Plater")
+local plater = ns.Takeover:ForKey("nameplateShowEnemyPets")
+t("接管:Plater 命中姓名板且文案已填插件名", plater ~= nil and plater.addon == "Plater"
+	and plater.text:find("Plater", 1, true) ~= nil, plater and plater.text)
+
+t("接管:Plater 不越界到镜头或声音", ns.Takeover:ForKey("cameraDistanceMaxZoomFactor") == nil
+	and ns.Takeover:ForKey("Sound_MasterVolume") == nil)
+
+stub.setAddonLoaded("Leatrix_Plus", true)
+stub.fire("ADDON_LOADED", "Leatrix_Plus")
+local leatrix = ns.Takeover:ForKey("cameraDistanceMaxZoomFactor")
+t("接管:Leatrix_Plus 命中镜头", leatrix ~= nil and leatrix.addon == "Leatrix_Plus",
+	leatrix and leatrix.addon)
+
+local takeoverValue = C_CVar.GetCVar("cameraZoomSpeed")
+local takeoverConsoleN = #stub.consoleLog
+ns.Takeover:ForKey("cameraZoomSpeed")
+ns.Takeover:ForKey("nameplateMaxDistance")
+ns.Takeover:ActiveOwners()
+ns.Takeover:ActiveOwners()
+t("接管:反复检测不修改 CVar 或执行控制台命令", C_CVar.GetCVar("cameraZoomSpeed") == takeoverValue
+	and #stub.consoleLog == takeoverConsoleN)
+
+t("接管:多类插件加载时 ActiveOwners 有命中", #ns.Takeover:ActiveOwners() >= 1,
+	#ns.Takeover:ActiveOwners())
 
 print(string.format("== %s ==", fails == 0 and "ALL PASS" or (fails .. " FAILED")))
 if fails > 0 then error(fails .. " test(s) failed", 0) end

@@ -42,6 +42,7 @@ local function flagText(it)
 	if it.info.locked then parts[#parts + 1] = "|cff888888" .. L["Locked"] .. "|r" end
 	if it.control and it.control.requiresReload then parts[#parts + 1] = "|cffffcc00" .. L["Reload"] .. "|r" end
 	if it.control and it.control.requiresRestart then parts[#parts + 1] = "|cffff8800" .. L["Restart"] .. "|r" end
+	if ns.Takeover and ns.Takeover:ForKey(it.key) then parts[#parts + 1] = "|cffff8800⚠|r" end
 	return table.concat(parts, " ")
 end
 
@@ -150,6 +151,10 @@ local function rowTooltip(row, it)
 			0.55, 0.55, 0.55, true)
 	else
 		GameTooltip:AddLine(L["Internal cvar, purpose undocumented by Blizzard"], 0.55, 0.55, 0.55, true)
+	end
+	local takeover = ns.Takeover and ns.Takeover:ForKey(it.key)
+	if takeover then
+		GameTooltip:AddLine("|cffff8800⚠ " .. takeover.text .. "|r", 1, 0.53, 0, true)
 	end
 	GameTooltip:Show()
 end

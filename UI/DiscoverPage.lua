@@ -1,8 +1,7 @@
 local ADDON, ns = ...
 local L = ns.L
 
--- v0.4 发现页:调研点名的「策展式设置推荐引导层」。三段:
--- 建议(声明式条件命中才显示,可不再提示)/ 意图引导(内联真控件)/ 近期补丁新增
+-- 发现页:外部接管(只读)/ 建议(条件命中才显示)/ 意图引导(内联真控件)/ 近期补丁新增
 local function T(tbl)
 	return ns.IsCJK() and tbl.zh or tbl.en
 end
@@ -36,6 +35,21 @@ local function build(parent)
 	page.widgets = {}
 	-- 布局元素表:{ frame=, height= },OnPageShow 时按可见性从上往下重排
 	local elements = {}
+
+	-- 外部接管区:只读提示,加载中的接管插件发生变化时动态刷新
+	local takeoverHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	takeoverHeader:SetText("|cffff8800" .. L["Possible external takeover"] .. "|r")
+	elements[#elements + 1] = { frame = takeoverHeader, height = 20, isTakeoverHeader = true }
+
+	local takeoverRows = {}
+	for _ = 1, #((ns.Data and ns.Data.takeovers) or {}) do
+		local row = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		row:SetWidth(760)
+		row:SetJustifyH("LEFT")
+		row:SetWordWrap(true)
+		takeoverRows[#takeoverRows + 1] = row
+		elements[#elements + 1] = { frame = row, height = 22, takeoverIndex = #takeoverRows }
+	end
 
 	-- 建议区
 	local function tipActive(tip)
@@ -179,9 +193,21 @@ local function build(parent)
 	local function layout()
 		local y = -6
 		local anyTip = false
+		local owners = ns.Takeover and ns.Takeover:ActiveOwners() or {}
+		for i, row in ipairs(takeoverRows) do
+			local hit = owners[i]
+			if hit then
+				local text = ns.IsCJK() and hit.entry.text.zh or hit.entry.text.en
+				row:SetText(string.format(L["Detected %s: %s"], hit.addon, string.format(text, hit.addon)))
+			end
+		end
 		for _, el in ipairs(elements) do
 			local show = true
-			if el.isTipHeader then
+			if el.isTakeoverHeader then
+				show = #owners > 0
+			elseif el.takeoverIndex then
+				show = owners[el.takeoverIndex] ~= nil
+			elseif el.isTipHeader then
 				anyTip = false
 				for _, row in ipairs(tipRows) do
 					if tipActive(row.tip) then anyTip = true end

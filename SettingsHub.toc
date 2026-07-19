@@ -22,6 +22,7 @@ Locales\zhCN.lua
 
 Core\Guard.lua
 Core\Bootstrap.lua
+Core\Takeover.lua
 Core\Enum.lua
 Core\CombatQueue.lua
 Core\Blame.lua
@@ -60,6 +61,7 @@ Data\Guides.lua
 Data\Pinyin.lua
 Data\Encyclopedia.lua
 Data\Topics.lua
+Data\Takeovers.lua
 Data\Exposed.lua
 
 UI\Search.lua

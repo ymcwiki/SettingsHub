@@ -260,6 +260,8 @@ L["pack"] = "推荐包"
 -- 发现页与试穿(v0.4)
 L["Discover"] = "发现"
 L["Suggestions based on your current values"] = "按你的当前设置给出的建议"
+L["Possible external takeover"] = "可能有外部插件接管"
+L["Detected %s: %s"] = "检测到 %s:%s"
 L["Don't remind me"] = "不再提示"
 L["Suggestion applied: %s = %s"] = "建议已应用:%s = %s"
 L["Open the matching pack"] = "打开对应推荐包"
