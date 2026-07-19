@@ -24,7 +24,8 @@ local FILES = {
 }
 -- 纯 UI 文件无法在桩里执行,只做编译级语法检查
 local SYNTAX_ONLY = {
-	"UI/MainFrame.lua", "UI/DiscoverPage.lua", "UI/Browser.lua", "UI/Widgets.lua", "UI/ThemePage.lua",
+	"UI/MainFrame.lua", "UI/Style.lua", "UI/Widgets.lua", "UI/CvarList.lua", "UI/DiscoverPage.lua",
+	"UI/AllPage.lua", "UI/TopicPage.lua",
 	"UI/PackPage.lua", "UI/ProfilePage.lua", "UI/SnapshotPage.lua", "UI/LogPage.lua",
 	"UI/MinimapButton.lua",
 }
@@ -120,7 +121,7 @@ end
 
 -- T1 本地化:zhCN 表命中、未知键回落、策展文案按语言取值、行标签第一句切分
 do
-	t("本地化:已知键取译文", ns.L["Undo"] == "撤销" and ns.L["Browser"] == "浏览器")
+	t("本地化:已知键取译文", ns.L["Undo"] == "撤销" and ns.L["All Settings"] == "全部设置")
 	t("本地化:未知键回落原文", ns.L["__no_such_key__"] == "__no_such_key__")
 	local zoom
 	for _, th in ipairs(ns.Data.themes) do
@@ -703,6 +704,19 @@ t("主题:无家族名归其他", ns.Data.ClassifyTopic("dummyCvar7") == "other"
 local topicSum = 0
 for _, cnt in pairs(ns.Search:CategoryCounts()) do topicSum = topicSum + cnt end
 t("主题:分组计数之和等于全部", topicSum == CVAR_TOTAL, topicSum)
+t("主题:策展控件分类全覆盖", (function()
+	local known = { other = true }
+	for _, topic in ipairs(ns.Data.topicOrder) do known[topic.key] = true end
+	local ok = true
+	local function walk(controls)
+		for _, control in ipairs(controls or {}) do
+			if control.key and not known[ns.Data.ClassifyTopic(control.key)] then ok = false end
+			if control.children then walk(control.children) end
+		end
+	end
+	for _, theme in ipairs(ns.Data.themes) do walk(theme.controls) end
+	return ok
+end)())
 t("主题:按主题过滤命中相机项", (function()
 	for _, it in ipairs(ns.Search:Query("", "camera")) do
 		if it.key == "cameraZoomSpeed" then return true end
@@ -714,6 +728,17 @@ t("主题:全部主题中英文名齐全", (function()
 	if not full(ns.Data.TOPIC_OTHER) then return false end
 	for _, tp in ipairs(ns.Data.topicOrder) do
 		if not full(tp) then return false end
+	end
+	return true
+end)())
+t("主题:全部导航标题可用", (function()
+	local function usable(key)
+		local name = ns.Data.TopicName(key)
+		return type(name) == "string" and name ~= "" and name ~= key
+	end
+	if not usable(ns.Data.TOPIC_OTHER.key) then return false end
+	for _, topic in ipairs(ns.Data.topicOrder) do
+		if not usable(topic.key) then return false end
 	end
 	return true
 end)())

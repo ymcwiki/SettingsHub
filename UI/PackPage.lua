@@ -153,4 +153,4 @@ local function build(parent)
 	return page
 end
 
-ns.UI:RegisterPage("packs", L["Recommended Packs"], build)
+ns.UI:RegisterPage("packs", L["Recommended Packs"], build, { sepBefore = true })
