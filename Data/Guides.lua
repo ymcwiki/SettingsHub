@@ -5,6 +5,10 @@ local ADDON, ns = ...
 ns.Data = ns.Data or {}
 
 ns.Data.guides = {
+	{ key = "wanted",
+	  title = { zh = "最想要的隐藏设置", en = "Most-wanted hidden settings" },
+	  blurb = { zh = "社区里问得最多、官方选项里却偏偏没有的那几项,在这儿直接调。每项都有说明,不用记控制台命令,也不用装一堆小插件。", en = "The handful people ask about most that the official Options panel never exposes. Tune them right here, each one explained, no console commands to memorize and no pile of micro-addons." },
+	  items = { "camera.cameraDistanceMaxZoomFactor", "qol.SpellQueueWindow", "nameplate.nameplateMaxDistance", "graphics.ffxGlow", "graphics.ffxDeath", "sound.Sound_EnableArmorFoleySoundForSelf", "nameplate.nameplateOverlapH", "qol.rawMouseEnable" } },
 	{ key = "motionsick",
 	  title = { zh = "我晕 3D", en = "Motion sickness" },
 	  blurb = { zh = "镜头随速度和动作晃动是主要诱因,这几项全关,世界立刻稳下来。", en = "Camera sway tied to speed and motion is the main trigger; turn these off and the world settles down." },
