@@ -1,5 +1,8 @@
 -- WoW API 桩:只覆盖 P2~P6 引擎逻辑用到的面,Lua 5.1 语义
-local stub = { state = { inCombat = false, cvarsLoaded = true, stackAddon = nil }, frames = {}, registry = {} }
+local stub = { state = {
+	inCombat = false, cvarsLoaded = true, stackAddon = nil,
+	version = "12.1.0", build = "58000",
+}, frames = {}, registry = {} }
 
 function stub.addCvar(name, opts)
 	opts = opts or {}
@@ -32,6 +35,13 @@ _G.wipe = function(t)
 end
 _G.time = os.time
 _G.InCombatLockdown = function() return stub.state.inCombat end
+
+stub.loadedAddons = {}
+function stub.setAddonLoaded(name, value) stub.loadedAddons[name] = value end
+_G.C_AddOns = {
+	IsAddOnLoaded = function(name) return stub.loadedAddons and stub.loadedAddons[name] or false end,
+}
+_G.IsAddOnLoaded = _G.C_AddOns.IsAddOnLoaded
 
 -- UI 方法一律 no-op 兜底:测试只关心逻辑,不关心布局
 local function uiNoop(t)
@@ -106,7 +116,9 @@ _G.debugstack = function()
 end
 
 _G.SlashCmdList = {}
-_G.GetBuildInfo = function() return "12.1.0", "58000", "Jan 1 2026", 120100 end
+_G.GetBuildInfo = function()
+	return stub.state.version, stub.state.build, "Jan 1 2026", 120100
+end
 stub.timers = {}
 _G.C_Timer = {
 	After = function(sec, fn) stub.timers[#stub.timers + 1] = { at = sec, fn = fn } end,

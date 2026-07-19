@@ -3,6 +3,13 @@ local ADDON, ns = ...
 -- 本地化机制:键即 enUS 原文,缺译回落键本身;zhCN/zhTW 由 Locales/zhCN.lua 覆盖
 ns.L = setmetatable({}, { __index = function(_, k) return k end })
 
+ns.L["Possible external takeover"] = "Possible external takeover"
+ns.L["Detected %s: %s"] = "Detected %s: %s"
+ns.L["This patch changed your settings"] = "This patch changed your settings"
+ns.L["Patch %s → %s: %d values changed, %d added, %d removed"] = "Patch %s → %s: %d values changed, %d added, %d removed"
+ns.L["Open Snapshots to compare/restore"] = "Open Snapshots to compare/restore"
+ns.L["Got it"] = "Got it"
+
 local cjk = GetLocale and (GetLocale() == "zhCN" or GetLocale() == "zhTW")
 
 function ns.IsCJK()

@@ -48,6 +48,8 @@ ns.f:RegisterEvent("DISPLAY_SIZE_CHANGED")
 
 ns.f:SetScript("OnEvent", ns.Guard(function(_, event, ...)
 	if event == "ADDON_LOADED" then
+		if ns.Takeover then ns.Takeover:ClearCache() end
+		if ns.UI then ns.UI:Refresh() end
 		if ... ~= ADDON then return end
 		ns.db = LibStub("AceDB-3.0"):New("SettingsHubDB", defaults, true)
 	elseif event == "PLAYER_LOGIN" then
@@ -56,6 +58,7 @@ ns.f:SetScript("OnEvent", ns.Guard(function(_, event, ...)
 		ns.Conflicts:OnLogin()
 		ns.Trial:Arm()
 		ns.Replay:OnLogin()
+		if ns.PatchWatch then ns.PatchWatch:OnLogin() end
 		if ns.Integration then ns.Integration:Register() end
 	elseif event == "PLAYER_LOGOUT" then
 		if ns.Trial:Active() then ns.Trial:Revert("logout") end

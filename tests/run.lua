@@ -11,12 +11,13 @@ local FILES = {
 	"Adapters/ClickBinding.lua", "Adapters/MuteSound.lua", "Adapters/TTS.lua", "Adapters/ConsoleExec.lua",
 	"Adapters/ChatWindow.lua",
 	"Core/Engine.lua", "Core/Conflicts.lua", "Core/Replay.lua", "Core/Actions.lua", "Core/Profiles.lua",
-	"Core/Snapshots.lua", "Core/Packs.lua", "Core/Trial.lua",
+	"Core/Snapshots.lua", "Core/PatchWatch.lua", "Core/Packs.lua", "Core/Trial.lua",
 	"Data/Curated_A_Camera.lua", "Data/Curated_B_SoftTarget.lua", "Data/Curated_C_Nameplate.lua",
 	"Data/Curated_D_CombatText.lua", "Data/Curated_E_QoL.lua", "Data/Curated_F_Graphics.lua",
 	"Data/Curated_G_Sound.lua", "Data/Curated_H_Dev.lua", "Data/Curated_I_Chat.lua",
 	"Data/Curated_J_Input.lua", "Data/Curated_K_QuestMap.lua",
-	"Data/Packs.lua", "Data/Guides.lua", "Data/Pinyin.lua", "Data/Encyclopedia.lua", "Data/Topics.lua", "Data/Exposed.lua",
+	"Data/Packs.lua", "Data/Guides.lua", "Data/Pinyin.lua", "Data/Encyclopedia.lua", "Data/Topics.lua",
+	"Data/Takeovers.lua", "Core/Takeover.lua", "Data/Exposed.lua",
 	"UI/Search.lua",
 	"Integration/OfficialSettings.lua",
 	"SelfTest.lua",
@@ -439,6 +440,20 @@ local function decodeRejected(value)
 	local decoded, err = ns.Profiles:Decode(value)
 	return decoded == nil and type(err) == "string" and err ~= ""
 end
+local function deepEqual(a, b, seen)
+	if type(a) ~= type(b) then return false end
+	if type(a) ~= "table" then return a == b end
+	seen = seen or {}
+	if seen[a] == b then return true end
+	seen[a] = b
+	for k, v in pairs(a) do
+		if not deepEqual(v, b[k], seen) then return false end
+	end
+	for k in pairs(b) do
+		if a[k] == nil then return false end
+	end
+	return true
+end
 t("profile:schema 拒绝缺 data", decodeRejected(encodeImport({ v = 1 })))
 t("profile:schema 拒绝畸形 cvar 值", decodeRejected(encodeImport({
 		v = 1, data = { cvar = { cameraZoomSpeed = {} } },
@@ -463,6 +478,77 @@ t("profile:导入应用一致", C_CVar.GetCVar("dummyCvar9") == "1" and stub.tts
 E:Set("cvar", "dummyCvar9", "0", "test")
 ns.db.profile.cvar.dummyCvar9 = nil
 ns.db.profile.domains.tts = nil
+
+-- R2 导入迁移:bulk 持久化、域门控、预览与应用口径一致
+ns.Profiles:Switch("MigrationSource", "迁移测试源")
+ns.db.profile.binding = stub.deepcopy(bsnap)
+ns.db.profile.domains.binding = true
+local bindingPayload = assert(ns.Profiles:Decode(ns.Profiles:Export()))
+ns.Profiles:Switch("MigrationTarget", "迁移测试目标")
+ns.Profiles:ApplyImport(bindingPayload)
+t("profile:导入 binding 持久化到目标 profile", deepEqual(ns.db.profile.binding, bindingPayload.data.binding)
+	and ns.db.profile.domains.binding == true)
+ns.Profiles:Switch("MigrationOther", "迁移切换测试")
+ns.Profiles:Switch("MigrationTarget", "迁移切回测试")
+t("profile:导入 binding 切换后仍保留", deepEqual(ns.db.profile.binding, bindingPayload.data.binding)
+	and ns.db.profile.domains.binding == true)
+
+ns.db.profile.consoleexec.actioncam = "full"
+ns.db.profile.domains.consoleexec = nil
+local consoleUnchecked = assert(ns.Profiles:Decode(ns.Profiles:Export()))
+ns.db.profile.domains.consoleexec = true
+local consoleChecked = assert(ns.Profiles:Decode(ns.Profiles:Export()))
+t("profile:导出 consoleexec 按域勾选门控", consoleUnchecked.data.consoleexec == nil
+	and consoleChecked.data.consoleexec ~= nil)
+ns.db.profile.consoleexec.actioncam = nil
+ns.db.profile.domains.consoleexec = nil
+
+ns.db.profile.mutesound = { 569593 }
+ns.db.profile.domains.mutesound = nil
+local muteUnchecked = assert(ns.Profiles:Decode(ns.Profiles:Export()))
+ns.db.profile.domains.mutesound = true
+local muteChecked = assert(ns.Profiles:Decode(ns.Profiles:Export()))
+t("profile:导出 mutesound 按域勾选门控", muteUnchecked.data.mutesound == nil
+	and muteChecked.data.mutesound ~= nil)
+ns.db.profile.mutesound = {}
+ns.db.profile.domains.mutesound = nil
+
+ns.Profiles:Switch("MigrationGateTarget", "迁移门控测试")
+stub.keyToCmd.SPACE = nil
+local gatedPayload = { v = 1, domains = { cvar = true }, data = { binding = stub.deepcopy(bsnap) } }
+ns.Profiles:ApplyImport(gatedPayload)
+t("profile:导入忽略未勾选 binding", stub.keyToCmd.SPACE == nil
+	and ns.db.profile.binding == nil and ns.db.profile.domains.binding == nil)
+local _, gatedBulk = ns.Profiles:DiffAgainstCurrent(gatedPayload)
+t("profile:diff 忽略未勾选 binding", #gatedBulk == 0)
+
+local ttsBeforeConsistentImport = stub.tts.rate
+local consistentPayload = {
+	v = 1,
+	domains = { cvar = true, consoleexec = true, mutesound = true, binding = true },
+	data = {
+		cvar = { dummyCvar13 = "1" }, consoleexec = { actioncam = "full" },
+		mutesound = { 569593 }, binding = stub.deepcopy(bsnap), tts = { speechRate = 77 },
+	},
+}
+local previewChanges, previewBulk = ns.Profiles:DiffAgainstCurrent(consistentPayload)
+local previewDomains = {}
+for _, change in ipairs(previewChanges) do
+	previewDomains[change.key:find("^console ") and "consoleexec" or "cvar"] = true
+end
+for _, domain in ipairs(previewBulk) do previewDomains[domain] = true end
+ns.Profiles:ApplyImport(consistentPayload)
+local appliedDomains = {
+	cvar = C_CVar.GetCVar("dummyCvar13") == "1" or nil,
+	consoleexec = ns.db.profile.consoleexec.actioncam == "full" or nil,
+	mutesound = ns.db.profile.domains.mutesound and ns.db.profile.mutesound[1] == 569593 or nil,
+	binding = ns.db.profile.domains.binding and stub.keyToCmd.SPACE == "JUMP" or nil,
+}
+t("profile:diff 与实际应用域集合一致", deepEqual(previewDomains, appliedDomains)
+	and stub.tts.rate == ttsBeforeConsistentImport and ns.db.profile.tts == nil)
+E:Set("cvar", "dummyCvar13", "0", "test")
+ns.db.profile.cvar.dummyCvar13 = nil
+ns.Profiles:Switch("Default", "迁移测试清理")
 
 local badConsoleKey = "__settingshub_not_allowlisted__"
 local consoleBefore, failuresBefore = #stub.consoleLog, #E.failures
@@ -766,6 +852,40 @@ end
 t("快照:确认后淘汰最旧份", sx ~= nil and #ns.Snapshots:List() == 10 and not s1Alive)
 t("快照:删除", ns.Snapshots:Delete(sx) and #ns.Snapshots:List() == 9)
 
+-- R3 补丁漂移:首次落基准、同 build 静默、跨 build 只读地产生报告
+do
+	local g = ns.db.global
+	g.patchBaseline, g.patchReport = nil, nil
+	ns.PatchWatch:OnLogin()
+	t("补丁漂移:首次只落基准", g.patchBaseline ~= nil
+		and g.patchBaseline.build == stub.state.build and g.patchReport == nil)
+	local firstBuild = g.patchBaseline.build
+	ns.PatchWatch:OnLogin()
+	t("补丁漂移:同 build 不报告", g.patchReport == nil
+		and g.patchBaseline.build == firstBuild)
+
+	stub.state.version, stub.state.build = "12.1.5", "58100"
+	stub.registry.dummyCvar921.value = "8"
+	ns.Enum:Refresh()
+	local valueBefore = C_CVar.GetCVar("dummyCvar921")
+	local consoleBefore = #stub.consoleLog
+	ns.PatchWatch:OnLogin()
+	local report = g.patchReport
+	local changed
+	for _, item in ipairs(report and report.changed or {}) do
+		if item.key == "dummyCvar921" then changed = item break end
+	end
+	t("补丁漂移:build 变化生成报告", report ~= nil
+		and report.fromBuild == "58000" and report.toBuild == "58100"
+		and report.fromVersion == "12.1.0" and report.toVersion == "12.1.5")
+	t("补丁漂移:报告含正确值变", changed ~= nil
+		and changed.from == "0" and changed.to == "8")
+	t("补丁漂移:报告后更新基准", g.patchBaseline.build == "58100"
+		and g.patchBaseline.version == "12.1.5")
+	t("补丁漂移:检测过程只读", C_CVar.GetCVar("dummyCvar921") == valueBefore
+		and #stub.consoleLog == consoleBefore)
+end
+
 -- v0.3 聊天窗口域:全量快照回环 + 战斗锁
 local cwsnap = ns.Adapters.chatwindow:Serialize()
 t("chatwindow:导出窗口/消息组/频道", cwsnap[1].name == "General" and cwsnap[1].size == 14
@@ -969,6 +1089,38 @@ do
 	t("自检:错误含消息与栈", e.msg:find("boom%-selfcheck") ~= nil and type(e.stack) == "string")
 	E:Set("cvar", "dummyCvar61", "0", "test")
 end
+
+-- v0.6 外部接管检测:仅按已加载插件与静态映射提示,全程只读
+local noTakeover = ns.Takeover:ForKey("nameplateMaxDistance")
+local noOwners = ns.Takeover:ActiveOwners()
+t("接管:无插件加载时无命中", noTakeover == nil and #noOwners == 0, #noOwners)
+
+stub.setAddonLoaded("Plater", true)
+stub.fire("ADDON_LOADED", "Plater")
+local plater = ns.Takeover:ForKey("nameplateShowEnemyPets")
+t("接管:Plater 命中姓名板且文案已填插件名", plater ~= nil and plater.addon == "Plater"
+	and plater.text:find("Plater", 1, true) ~= nil, plater and plater.text)
+
+t("接管:Plater 不越界到镜头或声音", ns.Takeover:ForKey("cameraDistanceMaxZoomFactor") == nil
+	and ns.Takeover:ForKey("Sound_MasterVolume") == nil)
+
+stub.setAddonLoaded("Leatrix_Plus", true)
+stub.fire("ADDON_LOADED", "Leatrix_Plus")
+local leatrix = ns.Takeover:ForKey("cameraDistanceMaxZoomFactor")
+t("接管:Leatrix_Plus 命中镜头", leatrix ~= nil and leatrix.addon == "Leatrix_Plus",
+	leatrix and leatrix.addon)
+
+local takeoverValue = C_CVar.GetCVar("cameraZoomSpeed")
+local takeoverConsoleN = #stub.consoleLog
+ns.Takeover:ForKey("cameraZoomSpeed")
+ns.Takeover:ForKey("nameplateMaxDistance")
+ns.Takeover:ActiveOwners()
+ns.Takeover:ActiveOwners()
+t("接管:反复检测不修改 CVar 或执行控制台命令", C_CVar.GetCVar("cameraZoomSpeed") == takeoverValue
+	and #stub.consoleLog == takeoverConsoleN)
+
+t("接管:多类插件加载时 ActiveOwners 有命中", #ns.Takeover:ActiveOwners() >= 1,
+	#ns.Takeover:ActiveOwners())
 
 print(string.format("== %s ==", fails == 0 and "ALL PASS" or (fails .. " FAILED")))
 if fails > 0 then error(fails .. " test(s) failed", 0) end
