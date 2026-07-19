@@ -234,8 +234,8 @@ function M:Export()
 	local payload = { v = 1, game = (GetBuildInfo()), name = self:Current(), domains = {}, data = {} }
 	for d, on in pairs(p.domains) do payload.domains[d] = on and true or false end
 	if p.domains.cvar then payload.data.cvar = p.cvar end
-	if next(p.consoleexec) then payload.data.consoleexec = p.consoleexec end
-	if #p.mutesound > 0 then payload.data.mutesound = p.mutesound end
+	if p.domains.consoleexec and next(p.consoleexec) then payload.data.consoleexec = p.consoleexec end
+	if p.domains.mutesound and #p.mutesound > 0 then payload.data.mutesound = p.mutesound end
 	for _, d in ipairs(BULK_DOMAINS) do
 		if p.domains[d] then payload.data[d] = p[d] or ns.Adapters[d]:Serialize() end
 	end
@@ -271,7 +271,8 @@ end
 -- 导入前 diff:cvar 逐项旧值新值;批量域整域替换只报域名
 function M:DiffAgainstCurrent(payload)
 	local changes, unknown, bulk = {}, 0, {}
-	for k, want in pairs(payload.data.cvar or {}) do
+	local domains = payload.domains
+	for k, want in pairs((domains == nil or domains.cvar) and payload.data.cvar or {}) do
 		if not acceptableCvar(k) then
 			unknown = unknown + 1
 		else
@@ -281,7 +282,7 @@ function M:DiffAgainstCurrent(payload)
 			end
 		end
 	end
-	for k, want in pairs(payload.data.consoleexec or {}) do
+	for k, want in pairs((domains == nil or domains.consoleexec) and payload.data.consoleexec or {}) do
 		if not ns.Adapters.consoleexec:IsAllowed(k) then
 			unknown = unknown + 1
 		else
@@ -292,9 +293,9 @@ function M:DiffAgainstCurrent(payload)
 		end
 	end
 	for _, d in ipairs(BULK_DOMAINS) do
-		if payload.data[d] then bulk[#bulk + 1] = d end
+		if (domains == nil or domains[d]) and payload.data[d] then bulk[#bulk + 1] = d end
 	end
-	if payload.data.mutesound then bulk[#bulk + 1] = "mutesound" end
+	if (domains == nil or domains.mutesound) and payload.data.mutesound then bulk[#bulk + 1] = "mutesound" end
 	return changes, bulk, unknown
 end
 
@@ -304,7 +305,8 @@ function M:ApplyImport(payload)
 		return 0, 0, 0, "in-combat-bulk"
 	end
 	local applied, failed, skipped = 0, 0, 0
-	for k, want in pairs(payload.data.cvar or {}) do
+	local domains = payload.domains
+	for k, want in pairs((domains == nil or domains.cvar) and payload.data.cvar or {}) do
 		if not acceptableCvar(k) then
 			skipped = skipped + 1
 		else
@@ -312,7 +314,7 @@ function M:ApplyImport(payload)
 			if r == "failed" then failed = failed + 1 else applied = applied + 1 end
 		end
 	end
-	for k, want in pairs(payload.data.consoleexec or {}) do
+	for k, want in pairs((domains == nil or domains.consoleexec) and payload.data.consoleexec or {}) do
 		if not ns.Adapters.consoleexec:IsAllowed(k) then
 			skipped = skipped + 1
 		else
@@ -320,13 +322,17 @@ function M:ApplyImport(payload)
 			if r == "failed" then failed = failed + 1 else applied = applied + 1 end
 		end
 	end
-	if payload.data.mutesound then
+	if (domains == nil or domains.mutesound) and payload.data.mutesound then
 		ns.Adapters.mutesound:Restore(payload.data.mutesound)
+		ns.db.profile.mutesound = payload.data.mutesound
+		ns.db.profile.domains.mutesound = true
 	end
 	for _, d in ipairs(BULK_DOMAINS) do
-		if payload.data[d] then
+		if (domains == nil or domains[d]) and payload.data[d] then
 			ns.Engine:LogBulk(d, ns.Adapters[d]:Serialize(), "import")
 			ns.Adapters[d]:Restore(payload.data[d])
+			ns.db.profile[d] = payload.data[d]
+			ns.db.profile.domains[d] = true
 		end
 	end
 	ns.Print(string.format(ns.L["Import done: %d applied, %d failed, %d skipped (see the Log page for failures)"], applied, failed, skipped))
