@@ -1216,5 +1216,40 @@ do
 	t("控件类型判定:seen 跨词段不误判", not ns.ControlKind_IsInternalState("rawMouseEnable"))
 end
 
+-- v0.8 第二层:UI 源码只做语法检查，关键交互契约再用静态断言兜底。
+do
+	local function source(path)
+		local fh = assert(io.open(ROOT .. "/" .. path, "r"))
+		local text = fh:read("*a")
+		fh:close()
+		return text
+	end
+	local listSource = source("UI/CvarList.lua")
+	local styleSource = source("UI/Style.lua")
+	local missingKind
+	for _, kind in ipairs({ "toggle", "slider", "stepper", "enum", "input" }) do
+		if not listSource:find("row.controls." .. kind .. " =", 1, true) then missingKind = kind break end
+	end
+	t("列表控件化:五类控件均为行内懒建", missingKind == nil, missingKind)
+	t("列表控件化:写入统一走 Engine", listSource:find(
+		'ns.Engine:Set("cvar", it.key, v, "user")', 1, true) ~= nil
+		and listSource:find("SetCVar(", 1, true) == nil)
+	t("列表控件化:点击编辑器整套退役", listSource:find("openEditor", 1, true) == nil
+		and listSource:find("commitEdit", 1, true) == nil
+		and listSource:find("valueBtn", 1, true) == nil)
+	t("列表控件化:高行与四列令牌", styleSource:find("ListRowHeightTall = 34", 1, true) ~= nil
+		and styleSource:find("ListControlWidth = 240", 1, true) ~= nil
+		and styleSource:find("control = 320, default = 575, flags = 655", 1, true) ~= nil
+		and styleSource:find("scope =", 1, true) == nil)
+	t("列表控件化:内部状态默认折叠且搜索平铺", listSource:find(
+		"list.internalExpanded = false", 1, true) ~= nil
+		and listSource:find("if searchText ~= \"\" then", 1, true) ~= nil
+		and listSource:find("ns.ControlKind_IsInternalState(it.key)", 1, true) ~= nil)
+	t("列表控件化:策展参数活引用不原地改写",
+		listSource:match("row%.params%.range%s*%[[^%]]+%]%s*=") == nil
+		and listSource:match("row%.params%.values%s*%[[^%]]+%]%s*=") == nil
+		and listSource:match("row%.params%.valueLabels%s*%[[^%]]+%]%s*=") == nil)
+end
+
 print(string.format("== %s ==", fails == 0 and "ALL PASS" or (fails .. " FAILED")))
 if fails > 0 then error(fails .. " test(s) failed", 0) end
