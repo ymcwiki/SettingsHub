@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""本地手工打包(不经 CI):按 .pkgmeta 的 ignore 列表复制仓库,替换 @project-version@,产出 zip。
+"""本地手工打包(不经 CI):按 .pkgmeta 的 ignore 列表复制仓库,写入或校验版本号,产出 zip。
 
 用法: python3 scripts/package.py v0.1.0
 产物: dist/SettingsHub-<版本>.zip(解压即得 SettingsHub/ 目录,放进 Interface/AddOns/)
@@ -80,8 +80,18 @@ def main():
         if leaked:
             raise RuntimeError(f"development files leaked into package: {leaked[0]}")
         toc = zf.read(toc_name).decode("utf-8-sig")
-        if "@project-version@" in toc or f"## Version: {version}" not in toc:
+        if "@project-version@" in toc:
             raise RuntimeError("package version token was not replaced")
+        version_lines = [line.strip() for line in toc.splitlines() if line.startswith("## Version:")]
+        if len(version_lines) != 1:
+            raise RuntimeError("package version is missing or ambiguous")
+        if version != "ci":
+            accepted_versions = {version, version.removeprefix("v")}
+            packaged_version = version_lines[0].partition(":")[2].strip()
+            if packaged_version not in accepted_versions:
+                raise RuntimeError(
+                    f"package version mismatch: expected {version}, got {packaged_version}"
+                )
     print(f"{copied} 个文件 -> {zip_path}({zip_path.stat().st_size // 1024} KB)")
 
 
