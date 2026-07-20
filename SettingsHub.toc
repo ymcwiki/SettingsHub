@@ -3,7 +3,7 @@
 ## Notes: Search, understand, manage and migrate every game setting, exposed or hidden.
 ## Notes-zhCN: 游戏内设置中心:官方界面有和没有的设置,都在这里发现、理解、管理、迁移。
 ## Author: Weyk
-## Version: @project-version@
+## Version: 0.8.0
 ## SavedVariables: SettingsHubDB
 ## AddonCompartmentFunc: SettingsHub_OnAddonCompartmentClick
 ## IconTexture: Interface\AddOns\SettingsHub\Media\icon.png
@@ -64,6 +64,8 @@ Data\Encyclopedia.lua
 Data\Topics.lua
 Data\Takeovers.lua
 Data\Exposed.lua
+
+Core\ControlKind.lua
 
 UI\Search.lua
 UI\MainFrame.lua

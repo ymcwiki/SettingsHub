@@ -86,7 +86,9 @@ L["All"] = "全部"
 L["Category"] = "类别"
 
 -- 浏览器页
-L["Current (click to edit)"] = "当前值(点击编辑)"
+L["Control"] = "控件"
+L["⚠ Taken over by %s"] = "⚠ 由 %s 接管"
+L["Internal state records (%d) — saved by the game for progress; usually leave them alone"] = "内部状态记录(%d 条)——游戏自己存进度用的,一般不用动"
 L["%d / %d entries"] = "%d / %d 项"
 L["Ctrl+C to copy:"] = "Ctrl+C 复制:"
 L["Reset to default (%s)"] = "回默认(%s)"
@@ -99,7 +101,6 @@ L["Remove from favorites"] = "取消收藏"
 L["Toggle favorite"] = "收藏 / 取消收藏"
 L["Favorites gather in the Favorites tab and the tag:favorite filter"] = "收藏的条目汇总在「★ 收藏」选项卡与 tag:favorite 过滤词下"
 L["%s write failed (%s): may be read-only or an invalid value"] = "%s 写入失败(%s):可能只读或值非法"
-L["Secure values are locked in combat, try again after combat"] = "战斗中 secure 项已锁定,脱战后再改"
 
 -- 控件与 tooltip
 L["%s write failed (%s)"] = "%s 写入失败(%s)"
