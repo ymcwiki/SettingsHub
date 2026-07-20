@@ -18,6 +18,7 @@ local FILES = {
 	"Data/Curated_J_Input.lua", "Data/Curated_K_QuestMap.lua",
 	"Data/Packs.lua", "Data/Guides.lua", "Data/Pinyin.lua", "Data/Encyclopedia.lua", "Data/Topics.lua",
 	"Data/Takeovers.lua", "Core/Takeover.lua", "Data/Exposed.lua",
+	"Core/ControlKind.lua",
 	"UI/Search.lua",
 	"Integration/OfficialSettings.lua",
 	"SelfTest.lua",
@@ -1157,6 +1158,63 @@ t("接管:反复检测不修改 CVar 或执行控制台命令", C_CVar.GetCVar("
 
 t("接管:多类插件加载时 ActiveOwners 有命中", #ns.Takeover:ActiveOwners() >= 1,
 	#ns.Takeover:ActiveOwners())
+
+-- v0.8 第一层:控件类型判定、策展索引与内部状态过滤
+do
+	local kind, params = ns.ControlKind("__control_kind_unknown__", { default = "0", value = "1" })
+	t("控件类型判定:合成二值为 toggle", kind == "toggle")
+
+	kind, params = ns.ControlKind("__control_kind_unknown__", { default = "0", value = "5" })
+	t("控件类型判定:合成整数为 stepper", kind == "stepper" and params.step == 1)
+
+	kind, params = ns.ControlKind("__control_kind_unknown__", { default = "1.5", value = "1.5" })
+	t("控件类型判定:合成小数步长", kind == "stepper" and params.step == 0.1)
+
+	kind = ns.ControlKind("__control_kind_unknown__", { default = "auto", value = "auto" })
+	t("控件类型判定:合成文本为 input", kind == "input")
+
+	kind = ns.ControlKind("__control_kind_unknown__", nil)
+	t("控件类型判定:nil info 容错", kind == "input")
+
+	kind, params = ns.ControlKind("cameraDistanceMaxZoomFactor", nil)
+	t("控件类型判定:策展范围数值为 slider", kind == "slider" and params.range[2] == 2.6
+		and params.control ~= nil)
+
+	kind, params = ns.ControlKind("SoftTargetForce", nil)
+	t("控件类型判定:策展 enum 保留值", kind == "enum" and type(params.values) == "table"
+		and #params.values > 0 and params.control ~= nil)
+
+	kind, params = ns.ControlKind("AdvFlyingDynamicFOVEnabled", nil)
+	t("控件类型判定:策展 bool 为 toggle", kind == "toggle" and params.control ~= nil)
+
+	local indexedCount = 0
+	for _ in pairs(ns.Data.CuratedByKey or {}) do indexedCount = indexedCount + 1 end
+	t("控件类型判定:CuratedByKey 非空", indexedCount > 0)
+
+	local independentlyCounted = 0
+	local function countControls(controls)
+		for _, control in ipairs(controls or {}) do
+			if control.domain == "cvar" and control.key
+				and control.type ~= "action" and not control.verify then
+				independentlyCounted = independentlyCounted + 1
+			end
+			if control.children then countControls(control.children) end
+		end
+	end
+	for _, theme in ipairs(ns.Data.themes or {}) do countControls(theme.controls) end
+	t("控件类型判定:CuratedByKey 展平计数一致", indexedCount == independentlyCounted,
+		indexedCount .. "/" .. independentlyCounted)
+
+	t("控件类型判定:last 教程状态", ns.ControlKind_IsInternalState("lastGarrisonMissionTutorial"))
+	t("控件类型判定:筛选器状态", ns.ControlKind_IsInternalState("transmogrifySourceFilters"))
+	t("控件类型判定:教程状态", ns.ControlKind_IsInternalState("soulbindsActivatedTutorial"))
+	t("控件类型判定:chatBubbles 不误判", not ns.ControlKind_IsInternalState("chatBubbles"))
+	t("控件类型判定:cameraFov 不误判", not ns.ControlKind_IsInternalState("cameraFov"))
+	t("控件类型判定:showTargetOfTarget 不误判", not ns.ControlKind_IsInternalState("showTargetOfTarget"))
+	t("控件类型判定:最大镜头距离不误判",
+		not ns.ControlKind_IsInternalState("cameraDistanceMaxZoomFactor"))
+	t("控件类型判定:seen 跨词段不误判", not ns.ControlKind_IsInternalState("rawMouseEnable"))
+end
 
 print(string.format("== %s ==", fails == 0 and "ALL PASS" or (fails .. " FAILED")))
 if fails > 0 then error(fails .. " test(s) failed", 0) end
